@@ -49,7 +49,7 @@ with evidence from the current run recorded inline.
     AD frames, RSSI threshold edges and unavailable values, randomized BSSID cases, and
     dedup/stale/out-of-order state behavior.
 
-## Phase 2 — Scanner Abstractions & Permission Flow Models (current phase; 6/8 done)
+## Phase 2 — Scanner Abstractions & Permission Flow Models (current phase; 7/8 done)
 
 Phase 2 tasks approved by the developer 2026-10-19, in the order of
 [docs/phase2-proposal.md](docs/phase2-proposal.md). This iteration implemented
@@ -156,11 +156,32 @@ operation OFF; no manifest permission additions yet.
     Ready. Table-driven: 14 ObservationReadinessModelTest tests all passing this run.
     No manifest change, no runtime permission request code (out of this iteration).
 
-- [ ] **2.7** Observation pipeline and privacy controls — NOT implemented.
+- [x] **2.7** Observation pipeline and privacy controls
+  - Evidence (2026-10-19): pure-JVM pipeline package in `:core:radio` (zero android.*
+    imports, `:app` untouched): `ObservationPipeline` (bounded volatile retention — 200
+    entries default, deterministic oldest-first eviction, lazy 15-min TTL sweep with NO
+    timers/background work; newest-wins dedup via Phase 1 ObservationStore + additive
+    remove/keys; terminal `closeAndDispose` — late events fail closed, no reopen, volatile
+    identifiers dropped), `ObservationFreshness` (FRESH/STALE/UNKNOWN; Wi-Fi age ONLY
+    boot-relative resultAgeMs else UNKNOWN — receipt clock never substitutes data age;
+    cached updated=false results can NEVER be FRESH; negative/future/overflow UNKNOWN),
+    `PublicObservation` (privacy-safe projection: raw addresses/BSSIDs/payloads/issue
+    texts structurally unreachable; maskedAddress helper; per-pipeline ordinal
+    observationId with NO address/hash-derived material), `PipelineObservationListener`
+    (feeds DeviceObserved/WifiResultsAvailable only; one radio's session end never
+    corrupts the other's data; NOT wired to any production flow yet — explicit start UI
+    is Phase 3). Additive `ObservationStore.remove/keys` (semantics unchanged). Decision
+    record: `docs/phase2-observation-privacy-policy.md` (dataflow, identifiers, masking,
+    capacity/TTL, disposal, confidence limits, unverified-device caveats). No new
+    permissions; manifest/APK permission set verified unchanged; no file/network/log path
+    (source audited). Host evidence: 18 new ObservationPipelineTest cases; total 143/143
+    JVM green; :app:compileDebugKotlin and :app:assembleDebug successful (app sources
+    untouched). Real radio reception, broadcast cadence and Android runtime: UNVERIFIED
+    (device-free protocol).
 - [ ] **2.8** Device-free quality gate and phase handoff — NOT implemented (this iteration
       ran the full gate early: 72/72 JVM tests green, `:app:assembleDebug` successful).
 
-Current focus: Phase 2, next task **2.7** (observation pipeline and privacy controls) — not started.
+Current focus: Phase 2, next task **2.8** (device-free quality gate and phase handoff) — not started.
 
 ## Phase 3 — Friendly Compose UI & Live Observation State
 (planned; detailed tasks NOT YET AUTHORIZED — task counts: not defined)

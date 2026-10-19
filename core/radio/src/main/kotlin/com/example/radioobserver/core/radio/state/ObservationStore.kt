@@ -48,6 +48,16 @@ class ObservationStore {
     fun snapshot(): List<ObservedRadioDevice> =
         byKey.values.sortedByDescending { it.observedAtEpochMs }
 
+    /**
+     * Additive removal (task 2.7) for bounded pipeline retention. Removes and returns the
+     * entry for [key]; null when absent. Newest-wins semantics for remaining entries are
+     * unchanged.
+     */
+    fun remove(key: String): ObservedRadioDevice? = byKey.remove(key)
+
+    /** Additive: all keys, unordered (task 2.7 eviction support). */
+    fun keys(): Set<String> = byKey.keys.toSet()
+
     fun size(): Int = byKey.size
 
     fun clear() = byKey.clear()
