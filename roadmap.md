@@ -1,11 +1,12 @@
 # Radio Observer — Roadmap
 
-Authoritative task list. Phase 1 is authorized; Phases 2–3 are planned placeholders whose
-detailed tasks are NOT YET AUTHORIZED. Historical evidence is preserved; entries are never
-reordered or silently restructured. A task may only be checked with evidence from the
-current run recorded inline.
+Authoritative task list. Phase 1 is complete. Phase 2 is AUTHORIZED (2026-10-19) in the
+documented order, with implementation granted per bounded iteration; this iteration
+implemented 2.1, 2.2 and 2.5 ONLY. Phase 3 remains NOT AUTHORIZED. Historical evidence is
+preserved; entries are never reordered or silently restructured. A task may only be checked
+with evidence from the current run recorded inline.
 
-## Phase 1 — Architecture Foundation & Pure JVM Parsers (current phase)
+## Phase 1 — Architecture Foundation & Pure JVM Parsers (complete)
 
 - [x] **1.1** Project scaffolding and host-only Gradle compile validation
   - Evidence (2026-10-18 run): two-module Gradle 9.4.1 / AGP 9.2.1 / Kotlin 2.4.0 project
@@ -48,11 +49,57 @@ current run recorded inline.
     AD frames, RSSI threshold edges and unavailable values, randomized BSSID cases, and
     dedup/stale/out-of-order state behavior.
 
-## Phase 2 — Scanner Abstractions & Permission Flow Models
-(planned; detailed tasks NOT YET AUTHORIZED — task counts: not defined)
+## Phase 2 — Scanner Abstractions & Permission Flow Models (current phase; 3/8 done)
 
-> Proposal only, not approved tasks: see [docs/phase2-proposal.md](docs/phase2-proposal.md).
-> Draft tasks 2.1–2.8 remain unchecked proposals until developer approval.
+Phase 2 tasks approved by the developer 2026-10-19, in the order of
+[docs/phase2-proposal.md](docs/phase2-proposal.md). This iteration implemented
+2.1, 2.2, and 2.5 ONLY; 2.3, 2.4, 2.6, 2.7, 2.8 remain unchecked and unimplemented.
+Approved policy: BLE `neverForLocation` NOT asserted (coverage prioritized; fine-location
+implications disclosed); Wi-Fi receive-only (no `WifiManager.startScan()`); background
+operation OFF; no manifest permission additions yet.
+
+- [x] **2.1** Platform and permission capability matrix
+  - Evidence (2026-10-19): `docs/permission-capability-matrix.md` written from the official
+    Android Developers docs (bt-permissions, wifi-scan, wifi-permissions; inspected this
+    run). Covers API 29–30 / 31–32 / 33+ buckets, separate BLE vs Wi-Fi `getScanResults()`
+    requirement paths, radio/toggle/hardware/denial states, cached Wi-Fi results,
+    user-disclosure obligations, and the approved neverForLocation=NO and background=OFF
+    decisions. Real-device enforcement behavior remains explicitly UNVERIFIED.
+
+- [x] **2.2** Android boundary contracts and state models
+  - Evidence (2026-10-19): `core/radio/.../boundary/ObservationContracts.kt` — pure
+    Kotlin/JVM (zero `android.*` imports, verified), bounded `ObservationSessionSpec` with
+    a hard 10-minute ceiling, typed `ObservationError`/`ObservationEvent`/`SessionEndReason`,
+    `BleObservationSource` + `WifiObservationSource` contracts with a single-session guard,
+    cancellable handles, and deliberately NO scan-trigger/pairing/connect API surface.
+    JVM fakes + 14 BoundaryContractsTest tests cover start/stop/cancel, single-session
+    refusal, permission/hardware refusals, duration elapsed, stale Wi-Fi delivery with
+    unknown-age modeling, and post-failure session end. All passing this run.
+
+- [ ] **2.3** BLE observation adapter (time-bounded, permission-gated `BluetoothLeScanner`
+      callback adapter) — NOT implemented; next authorized task.
+- [ ] **2.4** Wi-Fi system scan-result observer (`SCAN_RESULTS_AVAILABLE_ACTION` passive
+      listener, permission-gated `getScanResults()`, freshness markers) — NOT implemented.
+- [ ] **2.6** Lifecycle, battery and background policy (stop/cancel rules, restriction
+      matrix, FGS evaluation record) — NOT implemented.
+
+- [x] **2.5** Permission and capability state model
+  - Evidence (2026-10-19): `core/radio/.../permissions/ObservationReadinessModel.kt` —
+    pure Kotlin/JVM decision engine over immutable `CapabilitySnapshot` (API bucket,
+    hardware presence, radio toggle, Location services, permission states). Encodes the
+    2.1 matrix: BLE legacy (29–30) needs BLUETOOTH/BLUETOOTH_ADMIN/ACCESS_FINE_LOCATION;
+    31+ needs BLUETOOTH_SCAN + ACCESS_FINE_LOCATION (neverForLocation NOT asserted);
+    Wi-Fi needs ACCESS_WIFI_STATE + ACCESS_FINE_LOCATION on all buckets (NEARBY_WIFI_DEVICES
+    deliberately not adopted for `getScanResults()`). Denied vs permanently-denied are
+    distinct blockers; multiple blockers accumulate; honest disclosure set emitted with
+    Ready. Table-driven: 14 ObservationReadinessModelTest tests all passing this run.
+    No manifest change, no runtime permission request code (out of this iteration).
+
+- [ ] **2.7** Observation pipeline and privacy controls — NOT implemented.
+- [ ] **2.8** Device-free quality gate and phase handoff — NOT implemented (this iteration
+      ran the full gate early: 72/72 JVM tests green, `:app:assembleDebug` successful).
+
+Current focus: Phase 2, next task **2.3** (BLE observation adapter) — not started.
 
 ## Phase 3 — Friendly Compose UI & Live Observation State
 (planned; detailed tasks NOT YET AUTHORIZED — task counts: not defined)
