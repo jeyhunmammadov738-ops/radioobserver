@@ -209,3 +209,12 @@ enum class ScanFailureReason {
         }
     }
 }
+
+/**
+ * Optional capability (added in task 2.6): a source that can be told the caller lost
+ * foreground eligibility, ending any active session with [SessionEndReason.FOREGROUND_LOST].
+ * Sources without it are stopped via handle cancellation instead.
+ */
+interface ForegroundLossAwareSource {
+    fun notifyForegroundLost()
+}

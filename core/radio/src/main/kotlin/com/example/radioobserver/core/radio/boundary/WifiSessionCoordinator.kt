@@ -89,7 +89,7 @@ class WifiSessionCoordinator(
     private val foregroundEligible: () -> Boolean,
     private val scheduler: SessionScheduler,
     private val clock: () -> Long = { System.currentTimeMillis() },
-) : WifiObservationSource {
+) : WifiObservationSource, ForegroundLossAwareSource {
 
     override val radio: RadioType = RadioType.WIFI
 
@@ -136,7 +136,7 @@ class WifiSessionCoordinator(
     }
 
     /** Explicit foreground-loss signal (task 2.6 will wire real lifecycle). */
-    fun notifyForegroundLost() {
+    override fun notifyForegroundLost() {
         stopInternal(SessionEndReason.FOREGROUND_LOST)
     }
 

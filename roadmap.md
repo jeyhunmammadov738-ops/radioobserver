@@ -49,7 +49,7 @@ with evidence from the current run recorded inline.
     AD frames, RSSI threshold edges and unavailable values, randomized BSSID cases, and
     dedup/stale/out-of-order state behavior.
 
-## Phase 2 — Scanner Abstractions & Permission Flow Models (current phase; 5/8 done)
+## Phase 2 — Scanner Abstractions & Permission Flow Models (current phase; 6/8 done)
 
 Phase 2 tasks approved by the developer 2026-10-19, in the order of
 [docs/phase2-proposal.md](docs/phase2-proposal.md). This iteration implemented
@@ -120,8 +120,29 @@ operation OFF; no manifest permission additions yet.
     evidence: 21 new WifiSessionCoordinatorTest cases; total 111/111 JVM tests green;
     :app:compileDebugKotlin and :app:assembleDebug successful. Real-device broadcast delivery,
     OEM cadence, permission UX: UNVERIFIED (device-free protocol).
-- [ ] **2.6** Lifecycle, battery and background policy (stop/cancel rules, restriction
-      matrix, FGS evaluation record) — NOT implemented.
+- [x] **2.6** Lifecycle, battery and background policy (stop/cancel rules, restriction
+      matrix, FGS evaluation record)
+  - Evidence (2026-10-19): pure-JVM `RadioObservationSupervisor` (`:core:radio`, zero
+    android.* imports) — RESUMED-ONLY eligibility (default FALSE; process liveness/permission
+    grants never substitute), NO auto-start on resume/recreation, loss of RESUMED is
+    TERMINAL for both sessions and stops them (FOREGROUND_LOST via additive
+    `ForegroundLossAwareSource`; handle-cancel fallback for sources without it), onStop/
+    onDestroy repeat cleanup idempotently, sessions independent (cancel-one spares the
+    other; foreground loss stops both; 1 BLE + 1 Wi-Fi coexistence unchanged), existing
+    10-min ceiling / 20-s BLE / 30-s Wi-Fi bounds and guard ordering preserved. Decision
+    record: `docs/phase2-lifecycle-battery-policy.md` (transition table, battery/background
+    hard rules incl. no FGS/boot/wakelock/WorkManager/alarms, multi-window trade-off,
+    process-death limits, official Android doc citations). :app bridge:
+    `ObservationLifecycleBridge` (DefaultLifecycleObserver, one per Activity, no Activity
+    refs outliving it) + MainActivity wiring (sources constructed INERT — no session starts
+    anywhere; explicit start awaits Phase 3 UI). Manifest unchanged (verified in final APK:
+    permission set identical, no new service/receiver/FGS). Host evidence: 14 new
+    RadioObservationSupervisorTest cases (eligibility default false, no auto-start,
+    pause-stops-both, idempotent stop/destroy, no revival, independence, timeout race,
+    plain-source fallback, recreation starts ineligible); total 125/125 JVM green;
+    :app:compileDebugKotlin, :app:assembleDebug successful. Android framework callback
+    delivery on a real device, OEM lifecycle behavior: UNVERIFIED (device-free protocol);
+    the :app bridge is compile-verified only.
 
 - [x] **2.5** Permission and capability state model
   - Evidence (2026-10-19): `core/radio/.../permissions/ObservationReadinessModel.kt` —
@@ -139,7 +160,7 @@ operation OFF; no manifest permission additions yet.
 - [ ] **2.8** Device-free quality gate and phase handoff — NOT implemented (this iteration
       ran the full gate early: 72/72 JVM tests green, `:app:assembleDebug` successful).
 
-Current focus: Phase 2, next task **2.6** (lifecycle, battery and background policy) — not started.
+Current focus: Phase 2, next task **2.7** (observation pipeline and privacy controls) — not started.
 
 ## Phase 3 — Friendly Compose UI & Live Observation State
 (planned; detailed tasks NOT YET AUTHORIZED — task counts: not defined)

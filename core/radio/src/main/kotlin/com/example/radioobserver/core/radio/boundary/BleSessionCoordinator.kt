@@ -83,7 +83,7 @@ class BleSessionCoordinator(
     private val foregroundEligible: () -> Boolean,
     private val scheduler: SessionScheduler,
     private val clock: () -> Long = { System.currentTimeMillis() },
-) : BleObservationSource {
+) : BleObservationSource, ForegroundLossAwareSource {
 
     override val radio: RadioType = RadioType.BLE
 
@@ -131,7 +131,7 @@ class BleSessionCoordinator(
     }
 
     /** Explicit foreground-loss signal (task 2.6 will wire real lifecycle; never background-safe). */
-    fun notifyForegroundLost() {
+    override fun notifyForegroundLost() {
         stopInternal(SessionEndReason.FOREGROUND_LOST)
     }
 
