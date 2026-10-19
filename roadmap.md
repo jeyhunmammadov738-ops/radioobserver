@@ -49,7 +49,7 @@ with evidence from the current run recorded inline.
     AD frames, RSSI threshold edges and unavailable values, randomized BSSID cases, and
     dedup/stale/out-of-order state behavior.
 
-## Phase 2 — Scanner Abstractions & Permission Flow Models (current phase; 3/8 done)
+## Phase 2 — Scanner Abstractions & Permission Flow Models (current phase; 4/8 done)
 
 Phase 2 tasks approved by the developer 2026-10-19, in the order of
 [docs/phase2-proposal.md](docs/phase2-proposal.md). This iteration implemented
@@ -76,8 +76,28 @@ operation OFF; no manifest permission additions yet.
     refusal, permission/hardware refusals, duration elapsed, stale Wi-Fi delivery with
     unknown-age modeling, and post-failure session end. All passing this run.
 
-- [ ] **2.3** BLE observation adapter (time-bounded, permission-gated `BluetoothLeScanner`
-      callback adapter) — NOT implemented; next authorized task.
+- [x] **2.3** BLE observation adapter (time-bounded, permission-gated `BluetoothLeScanner`
+      callback adapter)
+  - Evidence (2026-10-19): pure-JVM `BleSessionCoordinator` (`:core:radio`, zero android.*
+    imports) owns ALL session logic: gate order = single-session -> caller-supplied
+    foreground eligibility (DEFAULT FALSE — nothing can scan until a later UI task wires a
+    real signal) -> real-check readiness snapshot evaluated by the 2.5 model -> engine start.
+    Bounded spec (hard 10 min ceiling, conservative 20 s default), idempotent cancel/stop,
+    stop on cancel/timeout/failure/foreground-loss, NO restart loop, late callbacks ignored,
+    dedup via Phase 1 ObservationStore newest-wins, no raw-address/payload logging.
+    Thin Android shell in `:app`: `AndroidBleScanEngine` (BluetoothLeScanner + ScanCallback;
+    typed mapping of platform failure codes 1-6, SecurityException -> typed refusal,
+    batch/defensive parsing, arrival wall-clock timestamps — timestampNanos never
+    misrepresented as epoch), `AndroidBleCapabilityProbe` (REAL checkSelfPermission /
+    adapter / Location-mode checks at the boundary; permanent-denial only caller-injected),
+    `AndroidBleObservationSource` (foreground default ineligible; scan-only: no
+    pair/connect/advertise/GATT/Wi-Fi/network/persistence). Manifest: BLUETOOTH_SCAN (31+),
+    legacy BLUETOOTH/BLUETOOTH_ADMIN maxSdk=30, ACCESS_FINE_LOCATION (no neverForLocation —
+    coverage priority, honest proximity disclosure); verified in the merged manifest and
+    final APK. No runtime permission dialog code. Host evidence: 18 new
+    BleSessionCoordinatorTest cases; total 90/90 JVM tests green; :app:compileDebugKotlin
+    and :app:assembleDebug successful. Real-device scan reception, permission dialogs,
+    OS throttling, screen-off behavior, OEM differences: UNVERIFIED (device-free protocol).
 - [ ] **2.4** Wi-Fi system scan-result observer (`SCAN_RESULTS_AVAILABLE_ACTION` passive
       listener, permission-gated `getScanResults()`, freshness markers) — NOT implemented.
 - [ ] **2.6** Lifecycle, battery and background policy (stop/cancel rules, restriction
@@ -99,7 +119,7 @@ operation OFF; no manifest permission additions yet.
 - [ ] **2.8** Device-free quality gate and phase handoff — NOT implemented (this iteration
       ran the full gate early: 72/72 JVM tests green, `:app:assembleDebug` successful).
 
-Current focus: Phase 2, next task **2.3** (BLE observation adapter) — not started.
+Current focus: Phase 2, next task **2.4** (Wi-Fi system scan-result observer) — not started.
 
 ## Phase 3 — Friendly Compose UI & Live Observation State
 (planned; detailed tasks NOT YET AUTHORIZED — task counts: not defined)

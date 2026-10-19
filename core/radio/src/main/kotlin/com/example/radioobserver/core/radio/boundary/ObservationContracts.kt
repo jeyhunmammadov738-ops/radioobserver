@@ -50,7 +50,10 @@ data class ObservationSessionId(val value: String) {
     }
 }
 
-/** Why a session ended. No value means "still active". */
+/**
+ * Why a session ended. No value means "still active". Scanning is foreground-eligible
+ * only by design; there is no background-safe session end reason.
+ */
 enum class SessionEndReason {
     /** Source stopped cleanly (e.g. adapter stopped, spec reached through normal flow). */
     COMPLETED_NORMALLY,
@@ -60,6 +63,8 @@ enum class SessionEndReason {
     DURATION_ELAPSED,
     /** Source failed after start; see the carried [ObservationError]. */
     SOURCE_ERROR,
+    /** The caller reported loss of foreground eligibility (task 2.3 gate; never background-safe). */
+    FOREGROUND_LOST,
 }
 
 /** Typed, conservative errors a source can report. No error invents device facts. */
@@ -84,6 +89,26 @@ sealed interface ObservationError {
 
     /** Only one session per source may be active at a time. */
     data class SessionAlreadyActive(override val radio: RadioType) : ObservationError
+
+    /**
+     * Caller-supplied foreground eligibility is false. Scanning never starts in this state;
+     * there is no background scan path by design (task 2.3 gate).
+     */
+    data class ForegroundIneligible(override val radio: RadioType) : ObservationError
+
+    /**
+     * The platform scan failed to start or failed while running. [platformCode] is the
+     * raw platform error code when one exists (kept verbatim, never reinterpreted);
+     * [reason] is the conservative typed mapping. UNKNOWN stays UNKNOWN — never success.
+     */
+    data class ScanStartFailed(
+        val reason: ScanFailureReason,
+        val platformCode: Int?,
+        override val radio: RadioType,
+    ) : ObservationError
+
+    /** The platform scanner could not be stopped cleanly; cleanup failure is surfaced, not hidden. */
+    data class ScanStopFailed(override val radio: RadioType) : ObservationError
 }
 
 /** All events a session listener can receive. Events are ordered per session. */
@@ -153,4 +178,34 @@ interface WifiObservationSource : RadioObservationSource {
         spec: ObservationSessionSpec,
         listener: ObservationSessionListener,
     ): SourceStartResult
+}
+
+/**
+ * Conservative mapping of platform scan-failure codes (BluetoothLeScanner constants).
+ * Anything unrecognized maps to UNKNOWN and stays a failure — never silently "success".
+ */
+enum class ScanFailureReason {
+    ALREADY_STARTED,
+    REGISTRATION_FAILED,
+    INTERNAL_ERROR,
+    FEATURE_UNSUPPORTED,
+    OUT_OF_RESOURCES,
+    TOO_FREQUENT,
+    /** Thrown by the platform when a required permission is actually missing at runtime. */
+    SECURITY_EXCEPTION,
+    /** No BluetoothLeScanner could be obtained (adapter null or Bluetooth off). */
+    NO_SCANNER,
+    UNKNOWN;
+
+    companion object {
+        fun fromPlatformCode(code: Int): ScanFailureReason = when (code) {
+            1 -> ALREADY_STARTED
+            2 -> REGISTRATION_FAILED
+            3 -> INTERNAL_ERROR
+            4 -> FEATURE_UNSUPPORTED
+            5 -> OUT_OF_RESOURCES
+            6 -> TOO_FREQUENT
+            else -> UNKNOWN
+        }
+    }
 }

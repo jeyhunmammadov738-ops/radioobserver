@@ -31,6 +31,8 @@ android {
 }
 
 dependencies {
+    // Pure-JVM observation core: boundary contracts, readiness model, parsers (Phase 2.3).
+    implementation(project(":core:radio"))
     implementation(platform(libs.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.compose.material3)
