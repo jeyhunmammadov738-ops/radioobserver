@@ -8,8 +8,10 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        // PROVISIONAL id: needs developer approval before any release.
-        applicationId = "com.example.radioobserver"
+        // Developer-approved permanent application ID (2026-10-19).
+        // Deliberately different from namespace/source packages, which stay com.example.radioobserver;
+        // a local build is NOT proof of store package-name availability.
+        applicationId = "com.hjinlabs.radioobserver"
         minSdk = 29
         targetSdk = 35
         versionCode = 1

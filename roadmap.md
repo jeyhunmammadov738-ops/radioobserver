@@ -31,7 +31,7 @@ current run recorded inline.
     `wifi/WifiObservationClassifier.kt` (infrastructure APs only; SSID never proves make/model;
     locally-administered BSSID → vendor stays Unknown; OUI hints caller-supplied only).
     Zero `android.*` imports in the module. Verified by BleDeviceClassifierTest (9 tests) and
-    WifiObservationClassifierTest (9 tests), all passing this run.
+    WifiObservationClassifierTest (8 tests), all passing this run.
 
 - [x] **1.4** RSSI signal-bucket / heuristic proximity utilities
   - Evidence: `signal/SignalBuckets.kt` — deterministic IMMEDIATE/NEAR/FAR/UNAVAILABLE
@@ -50,6 +50,9 @@ current run recorded inline.
 
 ## Phase 2 — Scanner Abstractions & Permission Flow Models
 (planned; detailed tasks NOT YET AUTHORIZED — task counts: not defined)
+
+> Proposal only, not approved tasks: see [docs/phase2-proposal.md](docs/phase2-proposal.md).
+> Draft tasks 2.1–2.8 remain unchecked proposals until developer approval.
 
 ## Phase 3 — Friendly Compose UI & Live Observation State
 (planned; detailed tasks NOT YET AUTHORIZED — task counts: not defined)
