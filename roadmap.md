@@ -49,7 +49,7 @@ with evidence from the current run recorded inline.
     AD frames, RSSI threshold edges and unavailable values, randomized BSSID cases, and
     dedup/stale/out-of-order state behavior.
 
-## Phase 2 — Scanner Abstractions & Permission Flow Models (current phase; 7/8 done)
+## Phase 2 — Scanner Abstractions & Permission Flow Models (complete at code/host level; 8/8 done)
 
 Phase 2 tasks approved by the developer 2026-10-19, in the order of
 [docs/phase2-proposal.md](docs/phase2-proposal.md). This iteration implemented
@@ -178,10 +178,23 @@ operation OFF; no manifest permission additions yet.
     JVM green; :app:compileDebugKotlin and :app:assembleDebug successful (app sources
     untouched). Real radio reception, broadcast cadence and Android runtime: UNVERIFIED
     (device-free protocol).
-- [ ] **2.8** Device-free quality gate and phase handoff — NOT implemented (this iteration
-      ran the full gate early: 72/72 JVM tests green, `:app:assembleDebug` successful).
+- [x] **2.8** Device-free quality gate and phase handoff
+  - Evidence (2026-10-19): independent audit of 2.1-2.7 against documented acceptance
+    criteria (evidence matrix in docs/phase2-handover.md §1): receive-only Wi-Fi confirmed
+    (zero WifiManager.startScan/WifiScanner), 10-min ceiling / 20-s BLE / 30-s Wi-Fi
+    defaults intact, RESUMED-only lifecycle policy intact, privacy pipeline bounds intact
+    (200 entries / 15-min lazy TTL / no raw identifiers in public projection), no new
+    permissions/components/persistence/network (source + APK scanned). Fresh quality gate
+    on final tree (HEAD b793503): :core:radio:test --rerun-tasks -> 143/143, 0 failed,
+    0 skipped; :app:compileDebugKotlin OK; :app:assembleDebug OK; :app:lintDebug -> 1
+    pre-existing error (CoarseFineLocation: FINE-only is the deliberate 2.1 policy; adding
+    COARSE would be a new permission, prohibited in 2.8 — recorded as an open developer
+    decision, docs/phase2-handover.md §5) + 11 informational warnings. Handover document
+    created: docs/phase2-handover.md. Phase 2 marked complete AT CODE/HOST-VERIFICATION
+    LEVEL ONLY; real-device reception, permission UX, OEM behavior: UNVERIFIED. Phase 3
+    remains not started.
 
-Current focus: Phase 2, next task **2.8** (device-free quality gate and phase handoff) — not started.
+Current focus: Phase 2 complete at code/host level; Phase 3 (UI + explicit user start) awaits developer authorization — not started.
 
 ## Phase 3 — Friendly Compose UI & Live Observation State
 (planned; detailed tasks NOT YET AUTHORIZED — task counts: not defined)
