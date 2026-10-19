@@ -49,7 +49,7 @@ with evidence from the current run recorded inline.
     AD frames, RSSI threshold edges and unavailable values, randomized BSSID cases, and
     dedup/stale/out-of-order state behavior.
 
-## Phase 2 — Scanner Abstractions & Permission Flow Models (current phase; 4/8 done)
+## Phase 2 — Scanner Abstractions & Permission Flow Models (current phase; 5/8 done)
 
 Phase 2 tasks approved by the developer 2026-10-19, in the order of
 [docs/phase2-proposal.md](docs/phase2-proposal.md). This iteration implemented
@@ -98,8 +98,28 @@ operation OFF; no manifest permission additions yet.
     BleSessionCoordinatorTest cases; total 90/90 JVM tests green; :app:compileDebugKotlin
     and :app:assembleDebug successful. Real-device scan reception, permission dialogs,
     OS throttling, screen-off behavior, OEM differences: UNVERIFIED (device-free protocol).
-- [ ] **2.4** Wi-Fi system scan-result observer (`SCAN_RESULTS_AVAILABLE_ACTION` passive
-      listener, permission-gated `getScanResults()`, freshness markers) — NOT implemented.
+- [x] **2.4** Wi-Fi system scan-result observer (`SCAN_RESULTS_AVAILABLE_ACTION` passive
+      listener, permission-gated `getScanResults()`, freshness markers)
+  - Evidence (2026-10-19): pure-JVM `WifiSessionCoordinator` (`:core:radio`, zero android.*)
+    — STRICTLY receive-only: no method anywhere on the engine/fetcher boundary can trigger a
+    scan (source-inspected; `WifiManager.startScan()`/`WifiScanner` never appear). Gates
+    identical to BLE (single-session -> foreground default false -> 2.5 readiness -> receiver
+    registration) and RE-EVALUATED on every broadcast: permission/foreground loss fails closed
+    typed, session ends, no retry. Freshness honesty: platform timestamp (µs since boot)
+    preserved verbatim + boot-clock age (negative/future/implausible -> unknown), receipt
+    wall-clock kept separate, updated=false/missing delivered as NOT-new; dedup via
+    ObservationStore newest-wins. Thin Android shell (`:app` wifi/): context-registered,
+    session-scoped receiver with RECEIVER_NOT_EXPORTED (targetSdk 34+ mandatory; blocks
+    spoofed non-system sends; protected system broadcast stays deliverable), main thread never
+    blocked (single-thread executor, ordering preserved), `AndroidWifiResultFetcher` reads
+    ONLY `getScanResults()` (SecurityException -> typed PermissionDenied), capability probe
+    with REAL checks (ACCESS_WIFI_STATE + ACCESS_FINE_LOCATION; NEARBY_WIFI_DEVICES not
+    adopted). Manifest: ACCESS_WIFI_STATE added only (BLE set intact; no CHANGE_WIFI_STATE/
+    INTERNET/NEARBY_WIFI_DEVICES); verified in merged manifest + final APK. Session model
+    unchanged: per-radio single-session; one BLE and one Wi-Fi session may coexist. Host
+    evidence: 21 new WifiSessionCoordinatorTest cases; total 111/111 JVM tests green;
+    :app:compileDebugKotlin and :app:assembleDebug successful. Real-device broadcast delivery,
+    OEM cadence, permission UX: UNVERIFIED (device-free protocol).
 - [ ] **2.6** Lifecycle, battery and background policy (stop/cancel rules, restriction
       matrix, FGS evaluation record) — NOT implemented.
 
@@ -119,7 +139,7 @@ operation OFF; no manifest permission additions yet.
 - [ ] **2.8** Device-free quality gate and phase handoff — NOT implemented (this iteration
       ran the full gate early: 72/72 JVM tests green, `:app:assembleDebug` successful).
 
-Current focus: Phase 2, next task **2.4** (Wi-Fi system scan-result observer) — not started.
+Current focus: Phase 2, next task **2.6** (lifecycle, battery and background policy) — not started.
 
 ## Phase 3 — Friendly Compose UI & Live Observation State
 (planned; detailed tasks NOT YET AUTHORIZED — task counts: not defined)
