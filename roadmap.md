@@ -220,6 +220,11 @@ Current focus: Phase 2 complete at code/host level (2.8 re-verified 2026-10-20 w
 ## Phase 3 — Friendly Compose UI & Live Observation State
 (planned; detailed tasks NOT YET AUTHORIZED — task counts: not defined)
 
+Detailed draft proposal (10 tasks, all unchecked, planning only — NOT an implementation
+authorization): `docs/phase3-proposal.md` (added 2026-10-20). No Phase 3 roadmap
+checkboxes exist yet; tasks remain DRAFT pending developer approval of the first
+implementation tranche.
+
 ## Binding scope and honesty rules (all phases)
 
 - Live BLE/Wi-Fi reception, permission UX, and real-device accuracy are UNVERIFIED under
