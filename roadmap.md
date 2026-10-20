@@ -215,15 +215,61 @@ operation OFF; no manifest permission additions yet.
     LEVEL ONLY; real-device reception, permission UX, OEM behavior: UNVERIFIED. Phase 3
     remains not started.
 
-Current focus: Phase 2 complete at code/host level (2.8 re-verified 2026-10-20 with lint exit 0); Phase 3 (UI + explicit user start + runtime permission flow incl. FINE+COARSE together) awaits developer authorization — not started.
+Current focus: Phase 3 task 3.3 (runtime permission and settings flow) — NOT started; 3.1–3.2 complete, 3.3–3.10 await separate developer authorization.
 
-## Phase 3 — Friendly Compose UI & Live Observation State
-(planned; detailed tasks NOT YET AUTHORIZED — task counts: not defined)
+## Phase 3 — Friendly Compose UI & Live Observation State (in progress; 2/10 done)
 
-Detailed draft proposal (10 tasks, all unchecked, planning only — NOT an implementation
-authorization): `docs/phase3-proposal.md` (added 2026-10-20). No Phase 3 roadmap
-checkboxes exist yet; tasks remain DRAFT pending developer approval of the first
-implementation tranche.
+Detailed proposal: `docs/phase3-proposal.md`. Developer authorization (2026-10-20): the
+ten tasks below are recorded in the established order; tasks 3.1 and 3.2 were authorized
+for implementation in that iteration. Developer-approved product decisions: default UI
+language Turkish; after permissions are granted observation NEVER starts automatically
+(a NEW explicit Start tap is required); public observations stay masked with no
+raw-address/BSSID reveal control.
+
+- [x] **3.1** UX contract, navigation and copy inventory
+  - Evidence (2026-10-20): `docs/phase3-ux-spec.md` — five surfaces (Home/Observation
+    Control, Observations, Observation Details, Permissions & Readiness, Privacy &
+    About), navigation flow, per-radio state-transition diagram (IDLE/CHECKING/
+    PERMISSION_REQUIRED/BLOCKED/OBSERVING/STOPPING/STOPPED/TIMED_OUT/ERROR), separate
+    BLE/Wi-Fi Start/Stop controls, full Turkish copy inventory (UiCopyKey and
+    SessionIssueKey mapping), exact two-tap permission contract (grant never starts;
+    second Start tap requires fresh readiness+foreground checks; same rule for
+    composition/resume/recreation/settings return), honesty rules (no AirTag/SmartTag
+    identity claim, no meter distance from RSSI, no safety guarantee, stale/unknown
+    Wi-Fi never shown fresh, empty list never proof, no raw-address reveal), Material 3
+    light/dark + WCAG AA contrast + ≥48dp targets + responsive layout + accessibility
+    labels, edge-case scenario table. Compose screens deliberately NOT implemented here.
+- [x] **3.2** UI state contracts and presentation mapper (JVM-first)
+  - Evidence (2026-10-20): pure-JVM package `:core:radio` `...core.radio.ui` (zero
+    android.* imports, no Android APIs, no side effects, no new dependencies):
+    `ObservationUiContracts.kt` (RadioSessionUiStatus, SessionIssueKey typed reasons,
+    LocationAccessUi with APPROXIMATE_ONLY never satisfying FINE-required scanning,
+    inert sealed ObservationUserIntent data contracts, typed UiCopyKey, RadioSessionUiState,
+    sanitized ObservationRowUi with session-local ordinal identity, ObservationUiState)
+    and `ObservationUiMapper.kt` (PublicObservation-only mapping; freshness carried
+    verbatim; per-radio structural independence; withLocationAccess deliberately
+    session-neutral — a PRECISE grant never auto-starts; withForegroundLost terminates
+    both radios; defensive mapping of blank/negative values). Privacy boundary: rows are
+    built from real pipeline snapshots; raw addresses/BSSIDs/payloads/parse-issue texts
+    are unreachable by construction. 18 new JVM tests (ObservationUiStateTest 10,
+    ObservationUiMapperTest 8): initial inert state, per-radio independence, grant-
+    never-starts, approximate-only semantics, distinct BLOCKED/ERROR/TIMED_OUT/STOPPED,
+    foreground loss, inert intents, defensive validation, no-raw-identifier leak (real
+    end-to-end snapshot), session-local row identity, cached Wi-Fi never fresh,
+    FRESH/STALE/UNKNOWN distinction, conservative confidence/qualitative signal.
+    Total 161/161 JVM green; :app:compileDebugKotlin, :app:assembleDebug and
+    :app:lintDebug (0 errors, 11 known warnings) all pass. Two test-fixture defects were
+    found and fixed during iteration (shared dedup key; "600_000" string underscore not
+    parseable) — production code unchanged by them. Android runtime UI/permission dialog
+    behavior: UNVERIFIED (device-free protocol).
+- [ ] **3.3** Runtime permission and settings flow — NOT started (authorized later)
+- [ ] **3.4** Foreground observation session integration — NOT started (authorized later)
+- [ ] **3.5** Material 3 Compose observation control screen — NOT started (authorized later)
+- [ ] **3.6** Sanitized observation feed and detail UI — NOT started (authorized later)
+- [ ] **3.7** Error, readiness and recovery UI — NOT started (authorized later)
+- [ ] **3.8** Lifecycle ownership and privacy teardown — NOT started (authorized later)
+- [ ] **3.9** Accessibility, responsive layout and polish — NOT started (authorized later)
+- [ ] **3.10** Device-free quality gate and phase handover — NOT started (authorized later)
 
 ## Binding scope and honesty rules (all phases)
 
