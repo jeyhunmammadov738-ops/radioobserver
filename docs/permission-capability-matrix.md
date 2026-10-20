@@ -46,7 +46,7 @@ normal = install-time permission. "LS on" = system Location services enabled.
 
 | Requirement | API 29–30 (Android 10–11) | API 31–32 (Android 12–12L) | API 33+ (Android 13+) |
 |---|---|---|---|
-| Permissions needed | `BLUETOOTH` (normal), `BLUETOOTH_ADMIN` (normal), `ACCESS_FINE_LOCATION` (runtime) | `BLUETOOTH_SCAN` (runtime), `ACCESS_FINE_LOCATION` (runtime; kept because `neverForLocation` is NOT asserted) | same as API 31–32 |
+| Permissions needed | `BLUETOOTH` (normal), `BLUETOOTH_ADMIN` (normal), `ACCESS_FINE_LOCATION` + `ACCESS_COARSE_LOCATION` (runtime) | `BLUETOOTH_SCAN` (runtime), `ACCESS_FINE_LOCATION` + `ACCESS_COARSE_LOCATION` (runtime; kept because `neverForLocation` is NOT asserted) | same as API 31–32 |
 | Location services | required (conservative; location-bearing scan results) | required (conservative; scan results are location-derived without `neverForLocation`) | same |
 | Bluetooth radio on | required | required | required |
 | Hardware absence | `BluetoothAdapter` absent → BLE unsupported | same | same |
@@ -97,3 +97,19 @@ Capability evaluation distinguishes, per radio and bucket:
   https://developer.android.com/develop/connectivity/wifi/wifi-scan
 - Wi-Fi permissions (`getScanResults()` requires `ACCESS_FINE_LOCATION` even targeting 13+):
   https://developer.android.com/develop/connectivity/wifi/wifi-permissions
+
+## Change record: ACCESS_COARSE_LOCATION added (2026-10-20, Phase 2.8 lint remediation)
+
+`ACCESS_COARSE_LOCATION` is now declared alongside `ACCESS_FINE_LOCATION` (app manifest).
+Reason: on Android 12+ (API 31+), a fine-location runtime request must include BOTH
+permissions, and the user may grant approximate-only access (`CoarseFineLocation` lint
+gate). Semantics are unchanged and deliberately conservative:
+
+- A COARSE-only grant does NOT satisfy BLE scan results or Wi-Fi `getScanResults()`,
+  which require FINE — the fail-closed probes and readiness model keep refusing
+  observation in that case (no false readiness, no downgrade of gates).
+- The eventual Phase 3 runtime permission flow must request BOTH permissions together
+  and handle the approximate-only outcome (still refused for scanning).
+- No other permissions were added: still no `ACCESS_BACKGROUND_LOCATION`,
+  `NEARBY_WIFI_DEVICES`, `CHANGE_WIFI_STATE`, or `INTERNET`; `neverForLocation` remains
+  deliberately absent.

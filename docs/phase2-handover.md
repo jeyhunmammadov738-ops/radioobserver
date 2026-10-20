@@ -22,12 +22,12 @@ passing. Real-device behavior remains UNVERIFIED (see §6).
 - `timeout 15m ./gradlew :core:radio:test --rerun-tasks --no-daemon` → EXIT 0, **143/143, 0 failed, 0 skipped** (12 suites: parsers 9+9, factory 5, BLE coordinator 18, contracts 14, pipeline 18, readiness 14, store 8, supervisor 14, buckets 5, Wi-Fi classifier 8, Wi-Fi coordinator 21).
 - `timeout 15m ./gradlew :app:compileDebugKotlin --no-daemon` → EXIT 0.
 - `timeout 15m ./gradlew :app:assembleDebug --no-daemon` → EXIT 0.
-- `timeout 15m ./gradlew :app:lintDebug --no-daemon` → EXIT 1: **1 error, 11 warnings (pre-existing, see §5)** — not a regression; fixing it is prohibited in 2.8 scope (would add a permission).
+- `timeout 15m ./gradlew :app:lintDebug --rerun-tasks --no-daemon` (2026-10-20 remediation run) → **EXIT 0: 0 errors, 11 warnings** (all informational; itemized in §5). The initial 2026-10-19 lint run exited 1 on `CoarseFineLocation`; it was remediated by declaring `ACCESS_COARSE_LOCATION` alongside `ACCESS_FINE_LOCATION` (the only authorized change; no tools:ignore/baseline/severity downgrade used). Note: an intermediate non-`--rerun-tasks` lint invocation replayed a stale cached failure; the fresh forced run is the recorded evidence.
 
 ## 3. Cross-layer audit findings
 
 - `:core:radio` retains ZERO `android.*` imports (source-scanned).
-- Manifest/APK permission set unchanged: BLUETOOTH_SCAN, BLUETOOTH(≤30), BLUETOOTH_ADMIN(≤30), ACCESS_FINE_LOCATION, ACCESS_WIFI_STATE (+AGP dynamic-receiver permission). No service/receiver/FGS/boot components. applicationId `com.hjinlabs.radioobserver`, versionCode 1, versionName 0.1.0-phase1.
+- Manifest/APK permission set (after 2026-10-20 remediation, APK-verified): BLUETOOTH_SCAN, BLUETOOTH(≤30), BLUETOOTH_ADMIN(≤30), ACCESS_FINE_LOCATION, **ACCESS_COARSE_LOCATION**, ACCESS_WIFI_STATE (+AGP dynamic-receiver permission). No service/receiver/FGS/boot components. applicationId `com.hjinlabs.radioobserver`, versionCode 1, versionName 0.1.0-phase1. Semantics: on Android 12+ both FINE and COARSE must be requested together and the user may grant approximate-only; a COARSE-only grant does NOT satisfy BLE scan / getScanResults() (FINE required) — fail-closed probes unchanged. A COARSE-only grant must be handled by the future Phase 3 permission flow (request both together; still refuse scanning without FINE).
 - No file/network/logging/persistence path in `:core:radio` or the scanning/lifecycle/pipeline code (source-scanned); no WorkManager/JobScheduler/alarm/wakelock.
 - BLE `BluetoothLeScanner.startScan()` is the ONLY scan initiator (2.3, deliberate); Wi-Fi has NO initiator.
 
@@ -38,8 +38,8 @@ passing. Real-device behavior remains UNVERIFIED (see §6).
 
 ## 5. Known open items (require developer decision; not fixed in 2.8)
 
-1. **Lint CoarseFineLocation (ERROR)**: manifest declares FINE without COARSE. The 2.1 policy deliberately requests FINE-only; lint/Play policy prefers both (Android 12+ approximate-grant nuance). Adding ACCESS_COARSE_LOCATION is a NEW permission → prohibited in 2.8; decision needed before Play release.
-2. Lint warnings (informational): OldTargetApi(35), newer Gradle/AGP/Kotlin/Compose versions available, MissingApplicationIcon, DataExtractionRules, InlinedApi(BLUETOOTH_SCAN constant on min 29 — inlined constant, safe pattern already guarded at runtime).
+1. ~~Lint CoarseFineLocation (ERROR)~~ — RESOLVED 2026-10-20: `ACCESS_COARSE_LOCATION` now declared alongside FINE (minimal authorized fix; no lint suppression). Lint gate passes (0 errors).
+2. Lint warnings (informational, nonblocking, 11): OldTargetApi(35), newer Gradle/AGP/Kotlin/Compose versions available, MissingApplicationIcon, DataExtractionRules, InlinedApi(BLUETOOTH_SCAN constant on min 29 — inlined constant, safe pattern already guarded at runtime).
 
 ## 6. UNVERIFIED on-device (honest limits)
 

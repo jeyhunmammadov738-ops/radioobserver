@@ -49,7 +49,7 @@ with evidence from the current run recorded inline.
     AD frames, RSSI threshold edges and unavailable values, randomized BSSID cases, and
     dedup/stale/out-of-order state behavior.
 
-## Phase 2 — Scanner Abstractions & Permission Flow Models (complete at code/host level; 8/8 done)
+## Phase 2 — Scanner Abstractions & Permission Flow Models (complete at code/host level; 8/8 done — 2.8 re-verified after lint remediation)
 
 Phase 2 tasks approved by the developer 2026-10-19, in the order of
 [docs/phase2-proposal.md](docs/phase2-proposal.md). This iteration implemented
@@ -179,6 +179,27 @@ operation OFF; no manifest permission additions yet.
     untouched). Real radio reception, broadcast cadence and Android runtime: UNVERIFIED
     (device-free protocol).
 - [x] **2.8** Device-free quality gate and phase handoff
+  - CORRECTION LOG (transparent, records preserved): the 2026-10-19 run prematurely ticked
+    2.8 while `:app:lintDebug` exited 1 (`CoarseFineLocation`). Reopened 2026-10-20;
+    remediation authorized in the same iteration: `ACCESS_COARSE_LOCATION` declared
+    alongside `ACCESS_FINE_LOCATION` (only change; no tools:ignore/baseline/severity
+    downgrade; no other permissions added; fail-closed probes unchanged — a COARSE-only
+    grant still does NOT satisfy BLE scan / getScanResults()).
+  - Fresh full-gate evidence on the remediated tree (2026-10-20):
+    `:core:radio:test --rerun-tasks --no-daemon` → 143/143, 0 failed, 0 skipped;
+    `:app:compileDebugKotlin --no-daemon` → EXIT 0; `:app:assembleDebug --no-daemon` →
+    EXIT 0; `:app:lintDebug --rerun-tasks --no-daemon` → EXIT 0, 0 errors, 11
+    informational warnings (2x AndroidGradlePluginVersion, 3x GradleDependency, 2x
+    NewerVersionAvailable, 1x InlinedApi [BLUETOOTH_SCAN constant, runtime-guarded],
+    1x OldTargetApi, 1x MissingApplicationIcon, 1x DataExtractionRules) — itemized in
+    docs/phase2-handover.md §5. APK verified: applicationId com.hjinlabs.radioobserver
+    unchanged; permission set now includes ACCESS_COARSE_LOCATION; no new
+    services/receivers/FGS. One transient anomaly documented: an intermediate non-rerun
+    lint invocation replayed a stale cached failure; the forced fresh run is the evidence.
+  - docs/phase2-handover.md updated (§2 gate results, §3 permission set, §5 resolved open
+    item). Phase 2 complete AT CODE/HOST-VERIFICATION LEVEL ONLY; real-device reception,
+    permission UX (incl. approximate-only grant handling), OEM behavior: UNVERIFIED.
+    Phase 3 remains not started.
   - Evidence (2026-10-19): independent audit of 2.1-2.7 against documented acceptance
     criteria (evidence matrix in docs/phase2-handover.md §1): receive-only Wi-Fi confirmed
     (zero WifiManager.startScan/WifiScanner), 10-min ceiling / 20-s BLE / 30-s Wi-Fi
@@ -194,7 +215,7 @@ operation OFF; no manifest permission additions yet.
     LEVEL ONLY; real-device reception, permission UX, OEM behavior: UNVERIFIED. Phase 3
     remains not started.
 
-Current focus: Phase 2 complete at code/host level; Phase 3 (UI + explicit user start) awaits developer authorization — not started.
+Current focus: Phase 2 complete at code/host level (2.8 re-verified 2026-10-20 with lint exit 0); Phase 3 (UI + explicit user start + runtime permission flow incl. FINE+COARSE together) awaits developer authorization — not started.
 
 ## Phase 3 — Friendly Compose UI & Live Observation State
 (planned; detailed tasks NOT YET AUTHORIZED — task counts: not defined)

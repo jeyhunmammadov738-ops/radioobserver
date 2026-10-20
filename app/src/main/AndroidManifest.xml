@@ -18,6 +18,11 @@
          neverForLocation is not asserted (official docs: keep it unless deriving location
          is strongly disclaimed). NOT used to collect location: no location APIs are called. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Android 12+ (API 31+) runtime requests must include COARSE together with FINE:
+         the user may grant approximate-only access (CoarseFineLocation lint gate). A
+         COARSE-only grant does NOT satisfy BLE scan / Wi-Fi getScanResults() operations,
+         which require FINE — the fail-closed probes keep refusing in that case. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- No BLUETOOTH_CONNECT / BLUETOOTH_ADVERTISE: the app never pairs, connects, or advertises. -->
     <!-- Phase 2.4 receive-only Wi-Fi observer: normal (install-time) permission to read
          system-cached scan results via getScanResults(). The app NEVER calls startScan().
