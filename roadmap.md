@@ -403,7 +403,7 @@ raw-address/BSSID reveal control.
     applicationId/permissions/version unchanged. UNVERIFIED: real Settings launches,
     permission dialogs, TalkBack, text scaling, dark mode, radio reception, OEM
     lifecycle (no device).
-- [x] **3.8**Lifecycle ownership and privacy teardown — NOT started (authorized later)
+- [x] **3.8** Lifecycle ownership, privacy teardown and state restoration
   - Evidence (2026-10-21): full ownership audit (docs/phase3-lifecycle-privacy-teardown.md
     matrix: Activity/launcher/BLE scanner/Wi-Fi receiver/generations/supervisor/pipeline/
     selection/pending-Start) — existing guarantees verified, no churn. ONE proven defect
