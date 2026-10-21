@@ -8,6 +8,7 @@ import com.example.radioobserver.core.radio.permissions.ReadinessBlocker
 import com.example.radioobserver.core.radio.session.ObservationSessionOrchestrator
 import com.example.radioobserver.core.radio.session.ObservationSessionOrchestrator.StartAuthorization
 import com.example.radioobserver.core.radio.ui.PermissionFlowScope
+import com.example.radioobserver.core.radio.ui.RadioSessionUiStatus
 import com.example.radioobserver.core.radio.ui.SessionIssueKey
 import com.example.radioobserver.permission.AndroidPermissionGateway
 import com.example.radioobserver.permission.PermissionFlowController
@@ -49,6 +50,45 @@ class ObservationSessionPresenter(
 
     /** Future 3.5 entry point: the user explicitly tapped the Turkish Wi-Fi Stop button. */
     fun onUserStopWifiTap() { orchestrator.stopWifiObservation() }
+
+    /**
+     * Phase 3.7 — user-invoked "Yeniden kontrol et" for BLE. Re-reads the CURRENT
+     * permission/capability facts and refreshes the session status honestly. It NEVER
+     * prompts a permission dialog, NEVER starts or stops a session; only a separate
+     * explicit Start (fresh gates) can start observation.
+     */
+    fun onUserRecheckBleTap() = onUserRecheckTap(RadioType.BLE)
+
+    /** Phase 3.7 — user-invoked "Yeniden kontrol et" for Wi-Fi. Same invariants as BLE. */
+    fun onUserRecheckWifiTap() = onUserRecheckTap(RadioType.WIFI)
+
+    private fun onUserRecheckTap(radio: RadioType) {
+        val grants = permissionGateway.snapshot()
+        val missingRuntime = !grants.fineLocation ||
+            (radio == RadioType.BLE && !grants.bluetoothScan)
+        if (missingRuntime) {
+            // Honest permission state only — no dialog here (dialog belongs to Start),
+            // no "permanent denial" claim (denial strength is unknowable).
+            orchestrator.refreshReadinessStatus(
+                radio,
+                RadioSessionUiStatus.PERMISSION_REQUIRED,
+                if (!grants.fineLocation && grants.coarseLocation) SessionIssueKey.PERMISSION_APPROXIMATE_ONLY
+                else SessionIssueKey.PERMISSION_DENIED,
+            )
+            return
+        }
+        val readiness = when (radio) {
+            RadioType.BLE -> ObservationReadinessModel.evaluate(bleProbe.currentSnapshot())
+            RadioType.WIFI -> ObservationReadinessModel.evaluate(wifiProbe.currentSnapshot())
+        }
+        when (readiness) {
+            is ObservationReadiness.Ready -> orchestrator.refreshReadinessStatus(
+                radio, RadioSessionUiStatus.IDLE, null)
+            is ObservationReadiness.Blocked -> orchestrator.refreshReadinessStatus(
+                radio, RadioSessionUiStatus.BLOCKED,
+                blockerIssue(readiness.blockers) ?: SessionIssueKey.HARDWARE_UNSUPPORTED)
+        }
+    }
 
     private fun onUserStartTap(radio: RadioType) {
         val grants = permissionGateway.snapshot()

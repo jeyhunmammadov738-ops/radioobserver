@@ -215,9 +215,9 @@ operation OFF; no manifest permission additions yet.
     LEVEL ONLY; real-device reception, permission UX, OEM behavior: UNVERIFIED. Phase 3
     remains not started.
 
-Current focus: Phase 3 task 3.7 (error, readiness and recovery UI) — NOT AUTHORIZED FOR IMPLEMENTATION; 3.1–3.6 complete, 3.7–3.10 not started.
+Current focus: Phase 3 task 3.8 (lifecycle ownership and privacy teardown) — NOT AUTHORIZED FOR IMPLEMENTATION; 3.1–3.7 complete, 3.8–3.10 not started.
 
-## Phase 3 — Friendly Compose UI & Live Observation State (in progress; 6/10 done)
+## Phase 3 — Friendly Compose UI & Live Observation State (in progress; 7/10 done)
 
 Detailed proposal: `docs/phase3-proposal.md`. Developer authorization (2026-10-20): the
 ten tasks below are recorded in the established order; tasks 3.1 and 3.2 were authorized
@@ -379,7 +379,30 @@ raw-address/BSSID reveal control.
     Turkish word "adres" — documented, not suppressed). APK: applicationId/permissions/
     version unchanged. UNVERIFIED: Compose click/navigation runtime, TalkBack, text
     scaling, dark mode, Wi-Fi broadcasts, BLE reception, OEM lifecycle (no device).
-- [ ] **3.7** Error, readiness and recovery UI — NOT started (authorized later)
+- [x] **3.7** Error, readiness and recovery UI
+  - Evidence (2026-10-21): honest per-radio recovery/status UI on the 3.5 control
+    cards. Pure-JVM core/radio/ui/RecoveryStatusProjection.kt (zero android.*, no
+    competing state machine, NO permanently-denied concept): maps CURRENT sanitized
+    session state to at most ONE context-appropriate action — İzin ayarlarını aç
+    (denied/approximate-only), Konum ayarlarını aç (location services off),
+    Yeniden kontrol et (radio off / throttled / security); unsupported-hardware,
+    terminal, idle and live states map to honest NO action. New narrow orchestrator
+    method refreshReadinessStatus (never start/stop/generation; no-op while live or
+    unchanged; require() forbids fabricated activity) + presenter recheck entries
+    (fresh gateway+probe read; NEVER prompts dialog or starts; two-tap intact).
+    MainActivity: recovery buttons wired to EXISTING guarded controller methods
+    (openAppPermissionSettings/openLocationSettings — no new launcher); identified
+    integration gap fixed: onResume now invokes onSettingsReturned (read-only
+    permission refresh after Settings/dialog/app-switch returns) and recreation invokes
+    onActivityRecreated (transient Start dropped). Turkish recovery copy + a11y labels
+    in strings.xml (48dp targets; action+radio contentDescriptions). 12 new JVM tests
+    (RecoveryStatusProjectionTest 7 + ObservationRecheckTest 5: A/B/C/D/E/F/G/L +
+    no-start refresh, live no-op, idempotency, no fabricated activity); totals 218/218;
+    :app:testDebugUnitTest 0 tests (none configured); compile/assemble/lint all EXIT 0;
+    lint 0 errors, 15 warnings (baseline unchanged, no new warnings). APK:
+    applicationId/permissions/version unchanged. UNVERIFIED: real Settings launches,
+    permission dialogs, TalkBack, text scaling, dark mode, radio reception, OEM
+    lifecycle (no device).
 - [ ] **3.8** Lifecycle ownership and privacy teardown — NOT started (authorized later)
 - [ ] **3.9** Accessibility, responsive layout and polish — NOT started (authorized later)
 - [ ] **3.10** Device-free quality gate and phase handover — NOT started (authorized later)

@@ -148,6 +148,29 @@ class ObservationSessionOrchestrator(
 
     // ------------------------------------------------------------------ stop
 
+    /**
+     * Phase 3.7 — user-invoked READINESS RECHECK ONLY. Publishes a fresh non-running
+     * session status derived from the caller's CURRENT permission/capability facts.
+     * Never starts, stops, registers a source or touches a generation; while the radio
+     * is OBSERVING/STOPPING the authoritative live status always wins (no-op); an
+     * unchanged derivation is a no-op too (no flicker, no duplicate callbacks).
+     */
+    fun refreshReadinessStatus(
+        radio: RadioType,
+        status: RadioSessionUiStatus,
+        issue: SessionIssueKey? = null,
+    ) {
+        require(status != RadioSessionUiStatus.OBSERVING && status != RadioSessionUiStatus.STOPPING) {
+            "a recheck must never fabricate an active session"
+        }
+        val current = sessionOf(radio)
+        if (current.status == RadioSessionUiStatus.OBSERVING ||
+            current.status == RadioSessionUiStatus.STOPPING
+        ) return
+        if (current.status == status && current.issueKey == issue) return
+        publish(withStatus(radio, status, issue))
+    }
+
     /** Explicit user Stop for BLE only. The Wi-Fi session is untouched. Idempotent. */
     fun stopBleSession(): Boolean = stop(RadioType.BLE, supervisor::cancelBleSession)
 

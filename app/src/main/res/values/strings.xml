@@ -105,5 +105,15 @@
     <string name="a11y_row_format">%1$s, %2$s, tazelik: %3$s, düğme</string>
     <string name="a11y_open_feed">Gözlemleri aç, düğme</string>
     <string name="open_feed_button">Gözlemler</string>
+    <!-- Phase 3.7: recovery, status and honest actions -->
+    <string name="recovery_permission_needs_setting">Gözlem için gereken izin verilmiyor. İzin ayarlarını açabilirsiniz; izin verdikten sonra gözlemi Başlat ile yeniden başlatmanız gerekir.</string>
+    <string name="recovery_approximate_only_needs_setting">Yalnızca yaklaşık konum verilmiş. Bu gözlem özelliği hassas konum gerektirir; izin ayarlarından değiştirebilirsiniz.</string>
+    <string name="recovery_location_services_need_setting">Konum servisleri kapalı. Sistem konum ayarlarını açabilirsiniz; uygulama bunu sizin adınıza değiştirmez.</string>
+    <string name="recovery_radio_off_recheck">Radyo kapalı görünüyor. Sistemden açtıktan sonra yeniden kontrol edebilirsiniz.</string>
+    <string name="recovery_system_limit_recheck">Sistem durumu değişmiş olabilir; yeniden kontrol edebilirsiniz. Bu bir tarama başlatmaz.</string>
+    <string name="action_open_permission_settings">İzin ayarlarını aç</string>
+    <string name="action_open_location_settings">Konum ayarlarını aç</string>
+    <string name="action_recheck">Yeniden kontrol et</string>
+    <string name="a11y_recovery_action_format">Kurtarma eylemi: %1$s, %2$s, düğme</string>
 </resources>
 

@@ -24,6 +24,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.example.radioobserver.R
 import com.example.radioobserver.core.radio.ui.ControlScreenProjection
+import com.example.radioobserver.core.radio.ui.RecoveryStatusProjection
+import com.example.radioobserver.core.radio.ui.RecoveryStatusProjection.RadioRecovery
 import com.example.radioobserver.core.radio.ui.LocationAccessUi
 import com.example.radioobserver.core.radio.ui.ObservationUiState
 import com.example.radioobserver.core.radio.ui.RadioSessionUiState
@@ -52,6 +54,10 @@ fun RadioObserverControlScreen(
     onStartWifi: () -> Unit,
     onStopWifi: () -> Unit,
     onOpenObservations: () -> Unit = {},
+    onOpenPermissionSettings: () -> Unit = {},
+    onOpenLocationSettings: () -> Unit = {},
+    onRecheckBle: () -> Unit = {},
+    onRecheckWifi: () -> Unit = {},
 ) {
     val openFeedA11y = stringResource(R.string.a11y_open_feed)
     Surface(modifier = Modifier.fillMaxSize()) {
@@ -88,6 +94,10 @@ fun RadioObserverControlScreen(
                 stopLabel = stringResource(R.string.ble_stop_button),
                 onStart = onStartBle,
                 onStop = onStopBle,
+                locationAccess = state.locationAccess,
+                onOpenPermissionSettings = onOpenPermissionSettings,
+                onOpenLocationSettings = onOpenLocationSettings,
+                onRecheck = onRecheckBle,
             )
             RadioControlCard(
                 title = stringResource(R.string.wifi_card_title),
@@ -98,6 +108,10 @@ fun RadioObserverControlScreen(
                 stopLabel = stringResource(R.string.wifi_stop_button),
                 onStart = onStartWifi,
                 onStop = onStopWifi,
+                locationAccess = state.locationAccess,
+                onOpenPermissionSettings = onOpenPermissionSettings,
+                onOpenLocationSettings = onOpenLocationSettings,
+                onRecheck = onRecheckWifi,
             )
 
             if (state.locationAccess == LocationAccessUi.NOT_REQUESTED ||
@@ -155,6 +169,10 @@ private fun RadioControlCard(
     stopLabel: String,
     onStart: () -> Unit,
     onStop: () -> Unit,
+    locationAccess: LocationAccessUi = LocationAccessUi.NOT_REQUESTED,
+    onOpenPermissionSettings: () -> Unit = {},
+    onOpenLocationSettings: () -> Unit = {},
+    onRecheck: () -> Unit = {},
 ) {
     val statusLabel = statusLabel(session.status)
     val statusText = stringResource(R.string.a11y_status_format, statusLabel)
@@ -189,6 +207,15 @@ private fun RadioControlCard(
                     color = MaterialTheme.colorScheme.error,
                 )
             }
+            // Phase 3.7: at most ONE context-appropriate recovery action, derived by the
+            // host-tested pure projection from CURRENT state. Clicks only — recomposition
+            // dispatches nothing; the buttons never claim a grant or enabled hardware.
+            RecoverySection(
+                recovery = RecoveryStatusProjection.recoveryFor(session, locationAccess),
+                onOpenPermissionSettings = onOpenPermissionSettings,
+                onOpenLocationSettings = onOpenLocationSettings,
+                onRecheck = onRecheck,
+            )
             Text(text = note, style = MaterialTheme.typography.bodySmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (ControlScreenProjection.startEnabled(session.status)) {
@@ -213,6 +240,59 @@ private fun RadioControlCard(
         }
     }
 }
+
+@Composable
+private fun RecoverySection(
+    recovery: RadioRecovery?,
+    onOpenPermissionSettings: () -> Unit,
+    onOpenLocationSettings: () -> Unit,
+    onRecheck: () -> Unit,
+) {
+    if (recovery == null) return
+    val (labelRes, messageRes) = when (recovery.action) {
+        RecoveryStatusProjection.RecoveryAction.OPEN_PERMISSION_SETTINGS ->
+            R.string.action_open_permission_settings to recovery.messageRes()
+        RecoveryStatusProjection.RecoveryAction.OPEN_LOCATION_SETTINGS ->
+            R.string.action_open_location_settings to recovery.messageRes()
+        RecoveryStatusProjection.RecoveryAction.RECHECK ->
+            R.string.action_recheck to recovery.messageRes()
+    }
+    val label = stringResource(labelRes)
+    val a11y = stringResource(R.string.a11y_recovery_action_format, label, radioWord2(recovery.radio))
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = stringResource(messageRes),
+            style = MaterialTheme.typography.bodySmall,
+        )
+        OutlinedButton(
+            onClick = when (recovery.action) {
+                RecoveryStatusProjection.RecoveryAction.OPEN_PERMISSION_SETTINGS -> onOpenPermissionSettings
+                RecoveryStatusProjection.RecoveryAction.OPEN_LOCATION_SETTINGS -> onOpenLocationSettings
+                RecoveryStatusProjection.RecoveryAction.RECHECK -> onRecheck
+            },
+            modifier = Modifier
+                .heightIn(min = 48.dp)
+                .semantics { contentDescription = a11y },
+        ) { Text(label) }
+    }
+}
+
+@Composable
+private fun RadioRecovery.messageRes(): Int = when (messageKey) {
+    RecoveryStatusProjection.RecoveryMessageKey.PERMISSION_NEEDS_SETTING -> R.string.recovery_permission_needs_setting
+    RecoveryStatusProjection.RecoveryMessageKey.APPROXIMATE_ONLY_NEEDS_SETTING -> R.string.recovery_approximate_only_needs_setting
+    RecoveryStatusProjection.RecoveryMessageKey.LOCATION_SERVICES_NEED_SETTING -> R.string.recovery_location_services_need_setting
+    RecoveryStatusProjection.RecoveryMessageKey.RADIO_OFF_RECHECK -> R.string.recovery_radio_off_recheck
+    RecoveryStatusProjection.RecoveryMessageKey.SYSTEM_LIMIT_RECHECK -> R.string.recovery_system_limit_recheck
+}
+
+@Composable
+private fun radioWord2(radio: com.example.radioobserver.core.radio.model.RadioType): String = stringResource(
+    when (radio) {
+        com.example.radioobserver.core.radio.model.RadioType.BLE -> R.string.source_ble
+        com.example.radioobserver.core.radio.model.RadioType.WIFI -> R.string.source_wifi
+    },
+)
 
 @Composable
 private fun statusLabel(status: RadioSessionUiStatus): String = stringResource(

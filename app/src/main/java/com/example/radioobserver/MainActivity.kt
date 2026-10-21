@@ -69,6 +69,16 @@ class MainActivity : ComponentActivity() {
     private val currentScreen = mutableStateOf<Screen>(Screen.Home)
     private val feedFilter = mutableStateOf(FeedFilter.ALL)
 
+    override fun onResume() {
+        super.onResume()
+        // Phase 3.7: read-only permission-state refresh after any return (Settings,
+        // permission dialog dismissal, app switch). NEVER starts observation and never
+        // prompts: the 3.3 reducer maps SettingsReturned to a pure state update. The
+        // session status itself stays untouched — a separate explicit Start (fresh
+        // gates) or the user's "Yeniden kontrol et" action updates it honestly.
+        permissionFlowController.onSettingsReturned()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Eligibility holder: sources read this; only the supervisor (lifecycle-driven) sets it.
@@ -120,6 +130,11 @@ class MainActivity : ComponentActivity() {
                 wifiManagerProvider = { getSystemService(android.net.wifi.WifiManager::class.java) },
             ),
         )
+        // Phase 3.7: on recreation the transient Start intent is dropped (no replay);
+        // the read-only refresh below re-reads OS facts on every resume.
+        if (savedInstanceState != null) {
+            permissionFlowController.onActivityRecreated()
+        }
         setContent {
             // Phase 3.5: the real Turkish control screen. Actions leave ONLY through
             // these user-click callbacks into the 3.4 presenter; composition,
@@ -133,6 +148,15 @@ class MainActivity : ComponentActivity() {
                     onStartWifi = sessionPresenter::onUserStartWifiTap,
                     onStopWifi = sessionPresenter::onUserStopWifiTap,
                     onOpenObservations = { currentScreen.value = Screen.Observations },
+                    // 3.7 recovery actions: guarded, user-invoked ONLY; the controller
+                    // reports failure honestly (no success claim, no permission grant
+                    // before OS state confirms it).
+                    onOpenPermissionSettings = { permissionFlowController.openAppPermissionSettings() },
+                    onOpenLocationSettings = { permissionFlowController.openLocationSettings() },
+                    // Readiness recheck: refreshes status from CURRENT facts; never
+                    // prompts a dialog, never starts a session (two-tap rule intact).
+                    onRecheckBle = sessionPresenter::onUserRecheckBleTap,
+                    onRecheckWifi = sessionPresenter::onUserRecheckWifiTap,
                 )
                 is Screen.Observations -> {
                     BackHandler { currentScreen.value = Screen.Home }
