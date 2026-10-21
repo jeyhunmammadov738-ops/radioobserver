@@ -103,11 +103,11 @@ class PermissionFlowPolicyTest {
     @Test
     fun `approximate-only is never precise enough for scanning`() {
         val coarseOnly = RuntimeGrantSnapshot(fineLocation = false, coarseLocation = true)
-        assertEquals(LocationAccessUi.APPROXIMATE_ONLY, LocationAccessResolver.resolve(coarseOnly))
-        assertFalse(LocationAccessResolver.resolve(coarseOnly).isPreciseEnoughForScanning)
-        assertEquals(LocationAccessUi.PRECISE, LocationAccessResolver.resolve(allGranted))
-        assertTrue(LocationAccessResolver.resolve(allGranted).isPreciseEnoughForScanning)
-        assertEquals(LocationAccessUi.DENIED, LocationAccessResolver.resolve(noneGranted))
+        assertEquals(LocationAccessUi.APPROXIMATE_ONLY, LocationAccessResolver.resolve(coarseOnly, false))
+        assertFalse(LocationAccessResolver.resolve(coarseOnly, false).isPreciseEnoughForScanning)
+        assertEquals(LocationAccessUi.PRECISE, LocationAccessResolver.resolve(allGranted, false))
+        assertTrue(LocationAccessResolver.resolve(allGranted, false).isPreciseEnoughForScanning)
+        assertEquals(LocationAccessUi.DENIED, LocationAccessResolver.resolve(noneGranted, true))
     }
 
     // ---- Denial classification ----

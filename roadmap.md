@@ -215,9 +215,9 @@ operation OFF; no manifest permission additions yet.
     LEVEL ONLY; real-device reception, permission UX, OEM behavior: UNVERIFIED. Phase 3
     remains not started.
 
-Current focus: Phase 3 task 3.8 (lifecycle ownership and privacy teardown) — NOT AUTHORIZED FOR IMPLEMENTATION; 3.1–3.7 complete, 3.8–3.10 not started.
+Current focus: Phase 3 task 3.9 (accessibility, responsive layout and polish) — NOT AUTHORIZED FOR IMPLEMENTATION; 3.1–3.8 complete, 3.9–3.10 not started.
 
-## Phase 3 — Friendly Compose UI & Live Observation State (in progress; 7/10 done)
+## Phase 3 — Friendly Compose UI & Live Observation State (in progress; 8/10 done)
 
 Detailed proposal: `docs/phase3-proposal.md`. Developer authorization (2026-10-20): the
 ten tasks below are recorded in the established order; tasks 3.1 and 3.2 were authorized
@@ -403,7 +403,23 @@ raw-address/BSSID reveal control.
     applicationId/permissions/version unchanged. UNVERIFIED: real Settings launches,
     permission dialogs, TalkBack, text scaling, dark mode, radio reception, OEM
     lifecycle (no device).
-- [ ] **3.8** Lifecycle ownership and privacy teardown — NOT started (authorized later)
+- [x] **3.8**Lifecycle ownership and privacy teardown — NOT started (authorized later)
+  - Evidence (2026-10-21): full ownership audit (docs/phase3-lifecycle-privacy-teardown.md
+    matrix: Activity/launcher/BLE scanner/Wi-Fi receiver/generations/supervisor/pipeline/
+    selection/pending-Start) — existing guarantees verified, no churn. ONE proven defect
+    fixed: the 3.7 onResume Settings-refresh mapped a grantless state to DENIED even when
+    no runtime request ever happened (fresh install falsely claimed denial).
+    LocationAccessResolver.resolve now requires denial EVIDENCE (genuine past runtime
+    request OR previously-held access, so revoked-after-grant stays honestly DENIED);
+    reducer supplies the evidence per event. 5 new JVM tests (PermissionRestorationTest:
+    fresh-process NOT_REQUESTED, post-request DENIED, pending-tap consumption with no
+    start effect, recreation drops transient Start but keeps in-flight guard, resolver
+    never fabricates denial). Totals 223/223; :app:testDebugUnitTest 0 tests (none
+    configured); compile/assemble/lint all EXIT 0; lint 0 errors, 15 warnings (baseline
+    unchanged). APK: applicationId/permissions/version unchanged. Privacy invariants
+    re-verified: no raw identifiers in UI, no persistent history, session-local rows,
+    200/15-min bounds unchanged, Wi-Fi receive-only. UNVERIFIED: real Android lifecycle
+    delivery, configuration-change timing, on-device permission races, OEM behavior.
 - [ ] **3.9** Accessibility, responsive layout and polish — NOT started (authorized later)
 - [ ] **3.10** Device-free quality gate and phase handover — NOT started (authorized later)
 

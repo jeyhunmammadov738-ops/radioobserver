@@ -56,10 +56,21 @@ data class RuntimePermissionRequest(
 
 /** Resolves an honest location-access classification from a grant snapshot. */
 object LocationAccessResolver {
-    fun resolve(snapshot: RuntimeGrantSnapshot): LocationAccessUi = when {
+    /**
+     * Honest restoration mapping (3.8): with nothing granted, DENIED is only truthful
+     * if a genuine runtime request has actually happened ([LocationAccessUi.DENIED] =
+     * "runtime request happened and was not granted"). Without that evidence the
+     * honest state is NOT_REQUESTED — a fresh process/first launch must never claim
+     * a denial that never occurred. Grants map to PRECISE/APPROXIMATE_ONLY regardless.
+     */
+    fun resolve(
+        snapshot: RuntimeGrantSnapshot,
+        runtimeRequestHappened: Boolean,
+    ): LocationAccessUi = when {
         snapshot.fineLocation -> LocationAccessUi.PRECISE
         snapshot.coarseLocation -> LocationAccessUi.APPROXIMATE_ONLY
-        else -> LocationAccessUi.DENIED
+        runtimeRequestHappened -> LocationAccessUi.DENIED
+        else -> LocationAccessUi.NOT_REQUESTED
     }
 }
 
@@ -193,13 +204,22 @@ object PermissionFlowReducer {
             val next = state.copy(
                 pendingRequestScope = null,
                 pendingStartTap = null,
-                locationAccess = LocationAccessResolver.resolve(event.snapshot),
+                // A dialog genuinely ran here, so DENIED (if still ungranted) is truthful.
+                locationAccess = LocationAccessResolver.resolve(event.snapshot, runtimeRequestHappened = true),
             )
             next to PermissionFlowEffect.None
         }
         is PermissionFlowEvent.SettingsReturned -> {
             // Settings return is a read-only refresh: no dialog, no start, no pending set.
-            val next = state.copy(locationAccess = LocationAccessResolver.resolve(event.snapshot))
+            // Honesty (3.8): "denied" requires genuine denial evidence — either a past
+            // runtime request OR access that was previously held (a grant later revoked
+            // in Settings is a real denial). A fresh process with neither reads
+            // NOT_REQUESTED, never a fabricated DENIED.
+            val next = state.copy(
+                locationAccess = LocationAccessResolver.resolve(
+                    event.snapshot,
+                    runtimeRequestHappened = state.previouslyRequested.isNotEmpty() ||
+                        state.locationAccess != LocationAccessUi.NOT_REQUESTED))
             next to PermissionFlowEffect.None
         }
         PermissionFlowEvent.ActivityRecreated -> {
