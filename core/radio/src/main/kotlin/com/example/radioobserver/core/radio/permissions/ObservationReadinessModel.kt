@@ -53,6 +53,16 @@ enum class PermissionId {
     /** Runtime permission; required for scan results on all supported buckets (no neverForLocation). */
     ACCESS_FINE_LOCATION,
 
+    /**
+     * Runtime permission on API 31+ (added in Phase 3.3): Android 12+ requires FINE and
+     * COARSE to be requested TOGETHER whenever precise location is requested; the user
+     * may grant approximate-only, which never satisfies FINE-required scanning. On
+     * API 29-30 it is an optional coarse companion of the legacy FINE request and is
+     * deliberately NOT part of [requiredPermissionsFor] (the hard scanning requirement
+     * there remains FINE only); it exists for the runtime request planner only.
+     */
+    ACCESS_COARSE_LOCATION,
+
     /** Install-time permission for Wi-Fi state access. */
     ACCESS_WIFI_STATE,
 }

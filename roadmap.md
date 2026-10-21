@@ -215,9 +215,9 @@ operation OFF; no manifest permission additions yet.
     LEVEL ONLY; real-device reception, permission UX, OEM behavior: UNVERIFIED. Phase 3
     remains not started.
 
-Current focus: Phase 3 task 3.3 (runtime permission and settings flow) — NOT started; 3.1–3.2 complete, 3.3–3.10 await separate developer authorization.
+Current focus: Phase 3 task 3.4 (foreground observation session integration) — pending developer approval; 3.1–3.3 complete, 3.4–3.10 not started.
 
-## Phase 3 — Friendly Compose UI & Live Observation State (in progress; 2/10 done)
+## Phase 3 — Friendly Compose UI & Live Observation State (in progress; 3/10 done)
 
 Detailed proposal: `docs/phase3-proposal.md`. Developer authorization (2026-10-20): the
 ten tasks below are recorded in the established order; tasks 3.1 and 3.2 were authorized
@@ -262,7 +262,37 @@ raw-address/BSSID reveal control.
     found and fixed during iteration (shared dedup key; "600_000" string underscore not
     parseable) — production code unchanged by them. Android runtime UI/permission dialog
     behavior: UNVERIFIED (device-free protocol).
-- [ ] **3.3** Runtime permission and settings flow — NOT started (authorized later)
+- [x] **3.3** Runtime permission and settings flow
+  - Evidence (2026-10-21): pure-JVM decision policy `:core:radio` `core.radio.ui`
+    `PermissionFlowPolicy.kt` (zero android.* imports): API 29-30 FINE-only plan; API 31+
+    FINE+COARSE together in ONE coordinated request (+BLUETOOTH_SCAN for BLE when
+    missing, never overlapping launches); ACCESS_WIFI_STATE/legacy Bluetooth never
+    runtime-requestable; NEARBY_WIFI_DEVICES absent from vocabulary by construction;
+    LocationAccessResolver (PRECISE / APPROXIMATE_ONLY never precise / DENIED);
+    DenialAssessment with NO permanently-denied output (rationale==false alone never
+    proves it); PermissionFlowReducer with in-flight duplicate guard, Settings
+    read-only refresh, recreation dropping the transient Start tap, and an effect type
+    with NO start-observation member (two-tap rule structurally enforced). Additive
+    changes (justified, tested): PermissionId.ACCESS_COARSE_LOCATION (runtime vocabulary
+    only; requiredPermissionsFor/FINE semantics unchanged) and LocationAccessUi.DENIED.
+    Thin Android bridge `:app` `permission/`: AndroidPermissionGateway (fresh
+    checkSelfPermission reads; BLUETOOTH_SCAN install-time-true < API 31) and
+    PermissionFlowController (RequestMultiplePermissions registered unconditionally in
+    onCreate, recreation-safe; launched ONLY from explicit user Start tap; fresh grant
+    re-read after every callback; transient Start consumed, never replayed; user-only
+    app/Location Settings recovery with resolveActivity guards; no scan, no services,
+    no persistence). MainActivity: narrow registration-only wiring, entry point
+    deliberately inert until 3.5. docs/phase3-permission-flow.md (matrix, two-tap rule,
+    lifecycle semantics, 3.5 handoff, UNVERIFIED register). 17 new JVM tests
+    (PermissionFlowPolicyTest): total 178/178 green; :app:testDebugUnitTest EXIT 0
+    (0 tests configured); :app:compileDebugKotlin EXIT 0; :app:assembleDebug EXIT 0;
+    :app:lintDebug --rerun-tasks EXIT 0 (0 errors; 14 informational warnings: 11
+    pre-existing + 2x InlinedApi BLUETOOTH_SCAN constant, runtime-guarded + 2x
+    QueryPermissionsNeeded on Settings intents; not suppressed, documented in
+    docs/phase3-permission-flow.md). APK verified unchanged: applicationId
+    com.hjinlabs.radioobserver, permission set identical to 2.8 state (incl.
+    ACCESS_COARSE_LOCATION; no new permissions). Real dialog/OEM/Settings behavior:
+    UNVERIFIED (device-free protocol).
 - [ ] **3.4** Foreground observation session integration — NOT started (authorized later)
 - [ ] **3.5** Material 3 Compose observation control screen — NOT started (authorized later)
 - [ ] **3.6** Sanitized observation feed and detail UI — NOT started (authorized later)

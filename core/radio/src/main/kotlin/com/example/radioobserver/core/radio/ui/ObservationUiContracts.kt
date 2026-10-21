@@ -78,6 +78,8 @@ enum class SessionIssueKey {
  */
 enum class LocationAccessUi {
     NOT_REQUESTED,
+    /** Runtime request happened and location was NOT granted (denial strength unknown). */
+    DENIED,
     APPROXIMATE_ONLY,
     PRECISE;
 

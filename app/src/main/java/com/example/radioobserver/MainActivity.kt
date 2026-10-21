@@ -6,6 +6,8 @@ import androidx.activity.compose.setContent
 import com.example.radioobserver.ble.AndroidBleObservationSource
 import com.example.radioobserver.core.radio.lifecycle.RadioObservationSupervisor
 import com.example.radioobserver.lifecycle.ObservationLifecycleBridge
+import com.example.radioobserver.permission.AndroidPermissionGateway
+import com.example.radioobserver.permission.PermissionFlowController
 import com.example.radioobserver.wifi.AndroidWifiObservationSource
 import java.util.concurrent.atomic.AtomicBoolean
 import androidx.compose.foundation.layout.Column
@@ -32,6 +34,12 @@ class MainActivity : ComponentActivity() {
     private lateinit var observationSupervisor: RadioObservationSupervisor
     private lateinit var observationLifecycleBridge: ObservationLifecycleBridge
 
+    // Phase 3.3: lifecycle-safe runtime permission bridge. The Activity Result launcher is
+    // registered UNCONDITIONALLY in onCreate (recreation-safe, stable order) and can only
+    // ever be LAUNCHED by an explicit user Start tap routed through onUserStartTap (the
+    // Phase 3.5 Compose Start control will call it). Nothing here starts observation.
+    private lateinit var permissionFlowController: PermissionFlowController
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Eligibility holder: sources read this; only the supervisor (lifecycle-driven) sets it.
@@ -43,6 +51,15 @@ class MainActivity : ComponentActivity() {
             wifiSource = wifiSource,
         ) { eligible -> foregroundEligibility.set(eligible) }
         observationLifecycleBridge = ObservationLifecycleBridge(this, observationSupervisor)
+        // 3.3 registration (before the activity reaches STARTED); the state listener stays
+        // a no-op until the Phase 3.5 control screen consumes PermissionFlowState. The
+        // entry point (permissionFlowController.onUserStartTap) is deliberately INERT
+        // here: no temporary scan button is invented in this placeholder.
+        permissionFlowController = PermissionFlowController(
+            activity = this,
+            gateway = AndroidPermissionGateway(applicationContext),
+            onStateChange = { /* wired by the 3.5 control screen; inert until then */ },
+        )
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
