@@ -215,9 +215,9 @@ operation OFF; no manifest permission additions yet.
     LEVEL ONLY; real-device reception, permission UX, OEM behavior: UNVERIFIED. Phase 3
     remains not started.
 
-Current focus: Phase 3 task 3.4 (foreground observation session integration) — pending developer approval; 3.1–3.3 complete, 3.4–3.10 not started.
+Current focus: Phase 3 task 3.5 (Material 3 Compose observation control screen) — pending fresh developer approval; 3.1–3.4 complete, 3.5–3.10 not started.
 
-## Phase 3 — Friendly Compose UI & Live Observation State (in progress; 3/10 done)
+## Phase 3 — Friendly Compose UI & Live Observation State (in progress; 4/10 done)
 
 Detailed proposal: `docs/phase3-proposal.md`. Developer authorization (2026-10-20): the
 ten tasks below are recorded in the established order; tasks 3.1 and 3.2 were authorized
@@ -293,7 +293,37 @@ raw-address/BSSID reveal control.
     com.hjinlabs.radioobserver, permission set identical to 2.8 state (incl.
     ACCESS_COARSE_LOCATION; no new permissions). Real dialog/OEM/Settings behavior:
     UNVERIFIED (device-free protocol).
-- [ ] **3.4** Foreground observation session integration — NOT started (authorized later)
+- [x] **3.4** Foreground observation session integration
+  - Evidence (2026-10-21): production call path implemented end-to-end:
+    pure-JVM `:core:radio` `session/ObservationSessionOrchestrator.kt` (foreground/
+    permission/capability re-checks at the start boundary; per-radio independence;
+    idempotent duplicate Start and repeated Stop; foreground loss stops both; generation
+    guard drops late callbacks; typed terminal mapping incl. TIMED_OUT/FOREGROUND_LOST/
+    SOURCE_ERROR with preserved cause; pipeline disposed on LAST session end —
+    radio independence preserved while the other session is live; fresh pipeline per
+    session with session-local identities; strictly passive Wi-Fi: no scan API exists) +
+    `:app` `session/ObservationSessionPresenter.kt` (fresh grants via 3.3 gateway,
+    capability via existing probes, foreground from supervisor; missing FINE/SCAN routes
+    ONLY through the 3.3 permission controller — two-tap rule; never auto-starts) +
+    MainActivity wiring (registered, deliberately inert: no temporary buttons, nothing
+    invoked on create/resume/callbacks/recreation). Android sources now declare the
+    existing `notifyForegroundLost()` as `ForegroundLossAwareSource` (minimal :app change;
+    foreground loss now ends sessions with the typed FOREGROUND_LOST reason).
+    docs/phase3-session-integration.md (call path, ownership, session semantics, privacy,
+    3.5 handoff, UNVERIFIED register). 13 new JVM tests (ObservationSessionOrchestratorTest
+    A–P: no cold-start/resume scan; single authorized start; permission-need not scan;
+    grant-never-starts + second-tap; approximate-only fails closed; simultaneous
+    independence; idempotency; foreground loss both + no auto-restart; recreation from
+    zero; timeout/failure/late-callback safety; sanitized rows without raw leaks; honest
+    Wi-Fi freshness FRESH/STALE/cached-never-fresh/UNKNOWN; passive Wi-Fi; disposal +
+    session-local identity reset). Totals: :core:radio:test --rerun-tasks 191/191;
+    :app:testDebugUnitTest --rerun-tasks EXIT 0 (0 tests configured);
+    :app:compileDebugKotlin EXIT 0; :app:assembleDebug EXIT 0; :app:lintDebug
+    --rerun-tasks EXIT 0 (0 errors; 14 warnings, all pre-existing informational).
+    APK/manifest unchanged: applicationId com.hjinlabs.radioobserver; permission set
+    identical; no new services/receivers/components; BLE startScan confined to the
+    existing bounded engine; no WifiManager.startScan()/WifiScanner. Real radio
+    reception/broadcast/lifecycle/OEM/Compose UI: UNVERIFIED (device-free protocol).
 - [ ] **3.5** Material 3 Compose observation control screen — NOT started (authorized later)
 - [ ] **3.6** Sanitized observation feed and detail UI — NOT started (authorized later)
 - [ ] **3.7** Error, readiness and recovery UI — NOT started (authorized later)

@@ -5,6 +5,7 @@ import android.net.wifi.WifiManager
 import android.os.Handler
 import android.os.Looper
 import com.example.radioobserver.core.radio.boundary.ObservationSessionListener
+import com.example.radioobserver.core.radio.boundary.ForegroundLossAwareSource
 import com.example.radioobserver.core.radio.boundary.ObservationSessionSpec
 import com.example.radioobserver.core.radio.boundary.ScheduledTask
 import com.example.radioobserver.core.radio.boundary.SessionScheduler
@@ -29,7 +30,7 @@ class AndroidWifiObservationSource(
     context: Context,
     foregroundEligibility: () -> Boolean = { false },
     permanentDenialProvider: (PermissionId) -> Boolean = { false },
-) : WifiObservationSource {
+) : WifiObservationSource, ForegroundLossAwareSource {
 
     private val appContext = context.applicationContext
     private val wifiManagerProvider: () -> WifiManager? = {
@@ -55,7 +56,7 @@ class AndroidWifiObservationSource(
     ): SourceStartResult = coordinator.startObservation(spec, listener)
 
     /** Explicit foreground-loss signal; task 2.6 will wire real lifecycle into this. */
-    fun notifyForegroundLost() = coordinator.notifyForegroundLost()
+    override fun notifyForegroundLost() = coordinator.notifyForegroundLost()
 }
 
 /** Main-thread single-shot scheduler (2.3 BLE keeps its own; no shared-code refactor here). */

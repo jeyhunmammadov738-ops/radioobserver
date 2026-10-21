@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import com.example.radioobserver.core.radio.boundary.BleObservationSource
+import com.example.radioobserver.core.radio.boundary.ForegroundLossAwareSource
 import com.example.radioobserver.core.radio.boundary.BleSessionCoordinator
 import com.example.radioobserver.core.radio.boundary.ObservationSessionListener
 import com.example.radioobserver.core.radio.boundary.ObservationSessionSpec
@@ -28,7 +29,7 @@ class AndroidBleObservationSource(
     context: Context,
     foregroundEligibility: () -> Boolean = { false },
     permanentDenialProvider: (PermissionId) -> Boolean = { false },
-) : BleObservationSource {
+) : BleObservationSource, ForegroundLossAwareSource {
 
     private val appContext = context.applicationContext
     private val adapterProvider: () -> android.bluetooth.BluetoothAdapter? = {
@@ -53,7 +54,7 @@ class AndroidBleObservationSource(
     ): SourceStartResult = coordinator.startSession(spec, listener)
 
     /** Explicit foreground-loss signal; task 2.6 will wire real lifecycle into this. */
-    fun notifyForegroundLost() = coordinator.notifyForegroundLost()
+    override fun notifyForegroundLost() = coordinator.notifyForegroundLost()
 }
 
 /** Main-thread single-shot scheduler for session timeouts. */

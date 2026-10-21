@@ -8,6 +8,11 @@ import com.example.radioobserver.core.radio.lifecycle.RadioObservationSupervisor
 import com.example.radioobserver.lifecycle.ObservationLifecycleBridge
 import com.example.radioobserver.permission.AndroidPermissionGateway
 import com.example.radioobserver.permission.PermissionFlowController
+import com.example.radioobserver.ble.AndroidBleCapabilityProbe
+import com.example.radioobserver.wifi.AndroidWifiCapabilityProbe
+import com.example.radioobserver.core.radio.pipeline.ObservationPipeline
+import com.example.radioobserver.core.radio.session.ObservationSessionOrchestrator
+import com.example.radioobserver.session.ObservationSessionPresenter
 import com.example.radioobserver.wifi.AndroidWifiObservationSource
 import java.util.concurrent.atomic.AtomicBoolean
 import androidx.compose.foundation.layout.Column
@@ -40,6 +45,12 @@ class MainActivity : ComponentActivity() {
     // Phase 3.5 Compose Start control will call it). Nothing here starts observation.
     private lateinit var permissionFlowController: PermissionFlowController
 
+    // Phase 3.4: the production session call path (orchestrator + presenter). Registered
+    // here but deliberately INERT: no Start/Stop button exists yet (Phase 3.5); nothing
+    // is invoked by onCreate/onStart/onResume, permission callbacks or recreation.
+    private lateinit var sessionOrchestrator: ObservationSessionOrchestrator
+    private lateinit var sessionPresenter: ObservationSessionPresenter
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Eligibility holder: sources read this; only the supervisor (lifecycle-driven) sets it.
@@ -59,6 +70,30 @@ class MainActivity : ComponentActivity() {
             activity = this,
             gateway = AndroidPermissionGateway(applicationContext),
             onStateChange = { /* wired by the 3.5 control screen; inert until then */ },
+        )
+        // Phase 3.4 wiring: explicit-user-tap-only observation path. The 3.5 Compose Start
+        // control will call sessionPresenter.onUserStartBleTap()/onUserStartWifiTap();
+        // until then these entry points are never invoked. The pipeline uses the wall
+        // clock; the supervisor supplies live foreground eligibility at tap time.
+        sessionOrchestrator = ObservationSessionOrchestrator(
+            supervisor = observationSupervisor,
+            pipelineFactory = { ObservationPipeline(clock = { System.currentTimeMillis() }) },
+        )
+        sessionPresenter = ObservationSessionPresenter(
+            orchestrator = sessionOrchestrator,
+            foregroundEligible = { observationSupervisor.isForegroundEligible },
+            permissionGateway = AndroidPermissionGateway(applicationContext),
+            permissionFlowController = permissionFlowController,
+            bleProbe = AndroidBleCapabilityProbe(
+                applicationContext,
+                adapterProvider = {
+                    getSystemService(android.bluetooth.BluetoothManager::class.java)?.adapter
+                },
+            ),
+            wifiProbe = AndroidWifiCapabilityProbe(
+                applicationContext,
+                wifiManagerProvider = { getSystemService(android.net.wifi.WifiManager::class.java) },
+            ),
         )
         setContent {
             MaterialTheme {
