@@ -215,9 +215,9 @@ operation OFF; no manifest permission additions yet.
     LEVEL ONLY; real-device reception, permission UX, OEM behavior: UNVERIFIED. Phase 3
     remains not started.
 
-Current focus: Phase 3 task 3.6 (sanitized observation feed and detail UI) — NOT AUTHORIZED FOR IMPLEMENTATION; 3.1–3.5 complete, 3.6–3.10 not started.
+Current focus: Phase 3 task 3.7 (error, readiness and recovery UI) — NOT AUTHORIZED FOR IMPLEMENTATION; 3.1–3.6 complete, 3.7–3.10 not started.
 
-## Phase 3 — Friendly Compose UI & Live Observation State (in progress; 5/10 done)
+## Phase 3 — Friendly Compose UI & Live Observation State (in progress; 6/10 done)
 
 Detailed proposal: `docs/phase3-proposal.md`. Developer authorization (2026-10-20): the
 ten tasks below are recorded in the established order; tasks 3.1 and 3.2 were authorized
@@ -351,7 +351,34 @@ raw-address/BSSID reveal control.
     count equals the historical 14). APK: applicationId/permissions/version unchanged.
     UNVERIFIED: real Compose click delivery, TalkBack, layout/font-scale/dark mode,
     permission dialogs, radio reception, OEM lifecycle (no device).
-- [ ] **3.6** Sanitized observation feed and detail UI — NOT started (authorized later)
+- [x] **3.6** Sanitized observation feed and detail UI
+  - Evidence (2026-10-21): real user-accessible read-only feed + detail, no navigation
+    dependency (MainActivity local typed Screen state + BackHandler; 3.5 control screen
+    gained a pure-navigation "Gözlemler" button). Feed (ui/FeedScreens.kt
+    ObservationsFeedScreen): combined ephemeral BLE + passive Wi-Fi rows over CURRENT
+    sanitized ObservationUiState; All/Bluetooth/Wi-Fi FilterChips; per-row source word,
+    freshness word (Taze/Eski/Tazelik bilinmiyor — verbatim, cached Wi-Fi never fresh),
+    honest last-seen from authoritative epoch only; LazyColumn keyed by session-local
+    rowId (pipeline ordinal, never address/hash) under the pipeline's authoritative
+    200-row bound; newest-first pipeline order preserved (no proximity re-sort).
+    Honest empty taxonomy (active/no-session/filter) with no-absence-proof note.
+    Detail (ObservationDetailScreen): resolved ONLY via pure-JVM
+    core/radio/ui/ObservationFeedProjection.detailFor(state, rowId) against current
+    state; sanitized fields only (source, name, conservative confidence word, signal
+    category + not-distance note, freshness, manufacturer/type hints + identity-not-
+    verified caution, locally-administered Evet/Hayır, last-seen, session-local row
+    label); Wi-Fi passive-source note; missing row → Turkish "no longer available"
+    state with return action, never a scan restart. No second retention/store/timer;
+    TTL/eviction/disposal stay authoritative at the pipeline. Turkish strings in
+    strings.xml (plurals conventions; no hardcoded UI text). Bug-risk review: rowId
+    stability verified — pipeline ordinal, not positional index; disposal → empty rows
+    → selection resolves unavailable; no defect found. 7 new JVM tests
+    (ObservationFeedProjectionTest A/B/C-D/E-F/H/I/J-K); totals 206/206;
+    :app:testDebugUnitTest 0 tests (none configured); compile/assemble/lint all EXIT 0;
+    lint 0 errors, 15 warnings (14 historical + 1 new: Typos false positive on the
+    Turkish word "adres" — documented, not suppressed). APK: applicationId/permissions/
+    version unchanged. UNVERIFIED: Compose click/navigation runtime, TalkBack, text
+    scaling, dark mode, Wi-Fi broadcasts, BLE reception, OEM lifecycle (no device).
 - [ ] **3.7** Error, readiness and recovery UI — NOT started (authorized later)
 - [ ] **3.8** Lifecycle ownership and privacy teardown — NOT started (authorized later)
 - [ ] **3.9** Accessibility, responsive layout and polish — NOT started (authorized later)

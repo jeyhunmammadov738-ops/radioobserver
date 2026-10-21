@@ -63,4 +63,47 @@
         <!-- Turkish has a single numeric form; "other" covers every count. -->
         <item quantity="other">Bu oturumda: %1$d kayıt</item>
     </plurals>
+    <!-- Phase 3.6: feed and detail -->
+    <string name="feed_title">Gözlemler</string>
+    <string name="feed_back">Geri</string>
+    <string name="filter_all">Tümü</string>
+    <string name="filter_bluetooth">Bluetooth</string>
+    <string name="filter_wifi">Wi-Fi</string>
+    <string name="feed_empty_no_session">Bu oturumda gösterilecek gözlem yok; etkin bir gözlem oturumu da yok. Bu, yakında cihaz olmadığını kanıtlamaz.</string>
+    <string name="feed_empty_filter">Bu filtrede gösterilecek gözlem yok. Bu, yakında cihaz olmadığını kanıtlamaz.</string>
+    <string name="row_unnamed">Adı bilinmiyor</string>
+    <string name="source_ble">Bluetooth</string>
+    <string name="source_wifi">Wi-Fi</string>
+    <string name="freshness_fresh">Taze</string>
+    <string name="freshness_stale">Eski</string>
+    <string name="freshness_unknown">Tazelik bilinmiyor</string>
+    <string name="confidence_unknown">Bilinmiyor</string>
+    <string name="confidence_possible">Olası</string>
+    <string name="confidence_candidate">Aday biçim</string>
+    <string name="confidence_validated_format">Doğrulanmış biçim</string>
+    <string name="signal_immediate">Çok yakın</string>
+    <string name="signal_near">Yakın</string>
+    <string name="signal_far">Uzak</string>
+    <string name="signal_unavailable">Sinyal bilgisi yok</string>
+    <string name="signal_qualitative_note">Sinyal kategorisi kaba bir radyo ipucudur, kesin mesafe değildir.</string>
+    <string name="confidence_caution">Sinyal düzenine göre olası cihaz ailesi; kimlik doğrulanmadı.</string>
+    <string name="last_seen_format">Son görülme: %1$s</string>
+    <string name="detail_title">Gözlem ayrıntısı</string>
+    <string name="detail_unavailable">Bu gözlem artık mevcut değil; oturum sona erdi, kayıt süresi doldu ya da değişti. Geri dönebilirsiniz.</string>
+        <string name="detail_field_source">Kaynak</string>
+    <string name="detail_field_manufacturer">Üretici ipucu</string>
+    <string name="detail_field_type">Tür ipucu</string>
+    <string name="detail_field_confidence">Güven düzeyi</string>
+    <string name="detail_field_signal">Sinyal kategorisi</string>
+    <string name="detail_field_freshness">Tazelik</string>
+    <string name="detail_field_locally_administered">Yerel olarak atanmış adres</string>
+    <string name="detail_field_last_seen">Son görülme</string>
+    <string name="detail_field_row_label">Oturum kaydı (oturuma özel)</string>
+    <string name="value_yes">Evet</string>
+    <string name="value_no">Hayır</string>
+    <string name="value_not_available">Bilinmiyor</string>
+    <string name="a11y_row_format">%1$s, %2$s, tazelik: %3$s, düğme</string>
+    <string name="a11y_open_feed">Gözlemleri aç, düğme</string>
+    <string name="open_feed_button">Gözlemler</string>
 </resources>
+

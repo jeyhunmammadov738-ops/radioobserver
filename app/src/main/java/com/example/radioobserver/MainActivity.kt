@@ -14,7 +14,11 @@ import com.example.radioobserver.core.radio.pipeline.ObservationPipeline
 import com.example.radioobserver.core.radio.session.ObservationSessionOrchestrator
 import com.example.radioobserver.session.ObservationSessionPresenter
 import com.example.radioobserver.wifi.AndroidWifiObservationSource
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.mutableStateOf
+import com.example.radioobserver.core.radio.ui.ObservationFeedProjection.FeedFilter
+import com.example.radioobserver.ui.ObservationDetailScreen
+import com.example.radioobserver.ui.ObservationsFeedScreen
 import com.example.radioobserver.core.radio.ui.ObservationUiState
 import com.example.radioobserver.ui.RadioObserverControlScreen
 import java.util.concurrent.atomic.AtomicBoolean
@@ -52,6 +56,18 @@ class MainActivity : ComponentActivity() {
     // session status — a grant alone changes nothing; the two-tap rule stands). The
     // holder dies with this Activity: recreation starts from a fresh inert state.
     private val controlUiState = mutableStateOf(ObservationUiState.initial())
+
+    // Phase 3.6: purely LOCAL read-only navigation state (no navigation dependency).
+    // Switching destination changes NO session/permission/scanning state; the control
+    // screen's Start/Stop wiring is untouched. Dies with the Activity: recreation
+    // returns to Home and renders only current sanitized state.
+    private sealed interface Screen {
+        data object Home : Screen
+        data object Observations : Screen
+        data class ObservationDetail(val rowId: String) : Screen
+    }
+    private val currentScreen = mutableStateOf<Screen>(Screen.Home)
+    private val feedFilter = mutableStateOf(FeedFilter.ALL)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -109,13 +125,36 @@ class MainActivity : ComponentActivity() {
             // these user-click callbacks into the 3.4 presenter; composition,
             // recomposition, resume, permission callbacks and recreation dispatch
             // NOTHING on their own. The state is the orchestrator's sanitized snapshot.
-            RadioObserverControlScreen(
-                state = controlUiState.value,
-                onStartBle = sessionPresenter::onUserStartBleTap,
-                onStopBle = sessionPresenter::onUserStopBleTap,
-                onStartWifi = sessionPresenter::onUserStartWifiTap,
-                onStopWifi = sessionPresenter::onUserStopWifiTap,
-            )
+            when (val screen = currentScreen.value) {
+                is Screen.Home -> RadioObserverControlScreen(
+                    state = controlUiState.value,
+                    onStartBle = sessionPresenter::onUserStartBleTap,
+                    onStopBle = sessionPresenter::onUserStopBleTap,
+                    onStartWifi = sessionPresenter::onUserStartWifiTap,
+                    onStopWifi = sessionPresenter::onUserStopWifiTap,
+                    onOpenObservations = { currentScreen.value = Screen.Observations },
+                )
+                is Screen.Observations -> {
+                    BackHandler { currentScreen.value = Screen.Home }
+                    ObservationsFeedScreen(
+                        state = controlUiState.value,
+                        filter = feedFilter.value,
+                        onFilterChange = { feedFilter.value = it },
+                        onRowSelect = { rowId ->
+                            currentScreen.value = Screen.ObservationDetail(rowId)
+                        },
+                        onBack = { currentScreen.value = Screen.Home },
+                    )
+                }
+                is Screen.ObservationDetail -> {
+                    BackHandler { currentScreen.value = Screen.Observations }
+                    ObservationDetailScreen(
+                        state = controlUiState.value,
+                        rowId = screen.rowId,
+                        onBack = { currentScreen.value = Screen.Observations },
+                    )
+                }
+            }
         }
     }
 }

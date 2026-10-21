@@ -51,7 +51,9 @@ fun RadioObserverControlScreen(
     onStopBle: () -> Unit,
     onStartWifi: () -> Unit,
     onStopWifi: () -> Unit,
+    onOpenObservations: () -> Unit = {},
 ) {
+    val openFeedA11y = stringResource(R.string.a11y_open_feed)
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -130,6 +132,14 @@ fun RadioObserverControlScreen(
                 text = stringResource(R.string.background_stop_note),
                 style = MaterialTheme.typography.bodySmall,
             )
+            // Phase 3.6: read-only feed entry. Pure navigation: this callback changes
+            // NO session, permission or scanning state — it only switches destination.
+            OutlinedButton(
+                onClick = onOpenObservations,
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .semantics { contentDescription = openFeedA11y },
+            ) { Text(stringResource(R.string.open_feed_button)) }
         }
     }
 }
