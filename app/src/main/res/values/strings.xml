@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Radio Observer — Turkish copy (default locale). Phase 3.5 control screen.
+  Keys mirror the 3.1 UiCopyKey inventory (docs/phase3-ux-spec.md section 5) plus the
+  status/issue label table. Honesty rules are mandatory: no identity/tracking/distance
+  claims; passive Wi-Fi is never described as an active scan; an empty feed never
+  proves absence of nearby radios.
+-->
+<resources>
+    <!-- 3.1 named copy keys -->
+    <string name="home_intro">Bu ekran açıkken yakındaki Bluetooth sinyallerini ve sistemde bulunan Wi-Fi sonuçlarını gözlemleyebilirsiniz.</string>
+    <string name="ble_start_button">Bluetooth gözlemini başlat</string>
+    <string name="ble_stop_button">Bluetooth gözlemini durdur</string>
+    <string name="wifi_start_button">Kullanılabilir Wi-Fi sonuçlarını gözle</string>
+    <string name="wifi_stop_button">Wi-Fi gözlemini durdur</string>
+    <string name="wifi_passive_note">Wi-Fi sonuçları sistemden gelir; eski veya eksik olabilir. Bu uygulama Wi-Fi taraması başlatmaz.</string>
+    <string name="precise_location_rationale">Android, bu tarama sonuçları için hassas konum izni gerektirir. Coğrafi konumunuzu göstermiyor ve sonuçları yüklemiyoruz.</string>
+    <string name="approximate_only_hint">Yaklaşık konum açık, ancak bu gözlem özelliği hassas erişim gerektirir. Seçiminizi ayarlardan değiştirebilirsiniz.</string>
+    <string name="empty_feed_note">Bu oturumda gösterilecek gözlem yok. Bu, yakında cihaz olmadığını kanıtlamaz.</string>
+    <string name="background_stop_note">Gözlem, aktif ekrandan ayrıldığınızda durur. Kendiliğinden yeniden başlamaz.</string>
+    <string name="privacy_body">Hiçbir gözlem yüklenmez, diske yazılmaz veya paylaşılmaz. Veriler yalnızca bu oturum boyunca cihazda, bellekte tutulur ve oturum bittiğinde silinir.</string>
+
+    <!-- Titles / scope honesty -->
+    <string name="control_title">Radyo Gözlemi</string>
+    <string name="scope_note">Bu bir radyo gözlem aracıdır; izleme, cihaz kimliği veya kesin mesafe ölçümü değildir.</string>
+    <string name="ble_card_title">Bluetooth gözlemi</string>
+    <string name="wifi_card_title">Wi-Fi gözlemi</string>
+    <string name="ble_bounded_note">Kullanıcı tarafından başlatılan, süresi sınırlandırılmış bir Bluetooth taramasıdır; süre dolunca kendiliğinden durur.</string>
+
+    <!-- Status labels (RadioSessionUiStatus) -->
+    <string name="status_idle">Etkin değil</string>
+    <string name="status_checking">Kontrol ediliyor…</string>
+    <string name="status_permission_required">İzin gerekli</string>
+    <string name="status_blocked">Kullanılamıyor</string>
+    <string name="status_observing">Gözlemliyor</string>
+    <string name="status_stopping">Durduruluyor…</string>
+    <string name="status_stopped">Durdu</string>
+    <string name="status_timed_out">Süre doldu</string>
+    <string name="status_error">Hata</string>
+
+    <!-- Issue labels (SessionIssueKey) -->
+    <string name="issue_bluetooth_off">Bluetooth kapalı</string>
+    <string name="issue_wifi_off">Wi-Fi kapalı</string>
+    <string name="issue_location_services_off">Konum servisleri kapalı</string>
+    <string name="issue_permission_denied">İzin verilmedi</string>
+    <string name="issue_approximate_only">Yalnızca yaklaşık konum verildi (hassas konum gerekli)</string>
+    <string name="issue_security_exception">Güvenlik nedeniyle tarama engellendi</string>
+    <string name="issue_scan_throttled">Sistem taramayı geçici olarak sınırladı</string>
+    <string name="issue_hardware_unsupported">Bu cihaz gerekli donanımı desteklemiyor</string>
+    <string name="issue_foreground_lost">Ekrandan ayrıldığınız için durduruldu</string>
+    <string name="issue_internal_error">Beklenmeyen bir hata oluştu</string>
+
+    <!-- Summary / session bound (from authoritative state only) -->
+    <string name="session_limit_format">Oturum sınırı: %1$d sn</string>
+
+    <!-- Accessibility (action + radio name together, per ux-spec section 5) -->
+    <string name="a11y_start_button_format">%1$s, %2$s, %3$s, düğme</string>
+    <string name="a11y_stop_button_format">%1$s, %2$s, %3$s, düğme</string>
+    <string name="a11y_status_format">Durum: %1$s</string>
+    <string name="radio_name_ble">Bluetooth gözlemi</string>
+    <string name="radio_name_wifi">Wi-Fi gözlemi</string>
+    <plurals name="observation_count">
+        <!-- Turkish has a single numeric form; "other" covers every count. -->
+        <item quantity="other">Bu oturumda: %1$d kayıt</item>
+    </plurals>
+</resources>

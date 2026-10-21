@@ -215,9 +215,9 @@ operation OFF; no manifest permission additions yet.
     LEVEL ONLY; real-device reception, permission UX, OEM behavior: UNVERIFIED. Phase 3
     remains not started.
 
-Current focus: Phase 3 task 3.5 (Material 3 Compose observation control screen) — pending fresh developer approval; 3.1–3.4 complete, 3.5–3.10 not started.
+Current focus: Phase 3 task 3.6 (sanitized observation feed and detail UI) — NOT AUTHORIZED FOR IMPLEMENTATION; 3.1–3.5 complete, 3.6–3.10 not started.
 
-## Phase 3 — Friendly Compose UI & Live Observation State (in progress; 4/10 done)
+## Phase 3 — Friendly Compose UI & Live Observation State (in progress; 5/10 done)
 
 Detailed proposal: `docs/phase3-proposal.md`. Developer authorization (2026-10-20): the
 ten tasks below are recorded in the established order; tasks 3.1 and 3.2 were authorized
@@ -324,7 +324,33 @@ raw-address/BSSID reveal control.
     identical; no new services/receivers/components; BLE startScan confined to the
     existing bounded engine; no WifiManager.startScan()/WifiScanner. Real radio
     reception/broadcast/lifecycle/OEM/Compose UI: UNVERIFIED (device-free protocol).
-- [ ] **3.5** Material 3 Compose observation control screen — NOT started (authorized later)
+- [x] **3.5** Material 3 Compose observation control screen
+  - Evidence (2026-10-21): real Turkish Material 3 control screen replacing the inert
+    placeholder. Stateless renderer `:app` `ui/ControlScreen.kt` (RadioObserverControlScreen):
+    title/scope/privacy honesty block; two independent cards (Bluetooth gözlemi / Wi-Fi
+    gözlemi) with Başlat/Durdur, honest status + typed issue + session-limit-from-real-state;
+    passive Wi-Fi note; approximate-only/precise rationale hints; sanitized count summary
+    or empty-feed honesty note; background-stop note. Turkish copy in
+    res/values/strings.xml mapped 1:1 to the 3.1 UiCopyKey inventory + ux-spec status/
+    issue tables (plurals for counts; future locale folders supported by the standard
+    mechanism). Pure-JVM projection `:core:radio` `ui/ControlScreenProjection.kt`
+    (host-tested enable rules, session-limit-from-authoritative-state, honest empty-feed
+    placement, sanitized count): Start enabled except OBSERVING/STOPPING (permission flow
+    always reachable; duplicate-start impossible), Stop only while active. MainActivity:
+    Activity-scoped mutableStateOf holder as the single Compose state source (statuses
+    only from the 3.4 orchestrator callback; 3.3 onStateChange refreshes ONLY
+    locationAccess — structurally cannot start anything, two-tap rule intact); setContent
+    wires ONLY real click callbacks to sessionPresenter::onUserStart*/Stop*; recreation
+    starts from ObservationUiState.initial(); 3.3 launcher registration unchanged.
+    A11y: 48dp touch targets, action+radio+status contentDescriptions, status semantics.
+    docs/phase3-control-screen.md (structure, strings, click-to-source path, ownership,
+    tests + UNVERIFIED register). 8 new JVM tests (ControlScreenProjectionTest G/D/F/E/K/
+    I/J-A/C); totals 199/199; :app:testDebugUnitTest 0 tests (none configured); compile/
+    assemble/lint all EXIT 0; lint 0 errors, 14 warnings (4 new-in-iteration string
+    warnings FIXED in-iteration: plurals + genuinely-used a11y/rationale strings; final
+    count equals the historical 14). APK: applicationId/permissions/version unchanged.
+    UNVERIFIED: real Compose click delivery, TalkBack, layout/font-scale/dark mode,
+    permission dialogs, radio reception, OEM lifecycle (no device).
 - [ ] **3.6** Sanitized observation feed and detail UI — NOT started (authorized later)
 - [ ] **3.7** Error, readiness and recovery UI — NOT started (authorized later)
 - [ ] **3.8** Lifecycle ownership and privacy teardown — NOT started (authorized later)

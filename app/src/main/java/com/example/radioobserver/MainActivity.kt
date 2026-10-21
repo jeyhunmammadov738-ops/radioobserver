@@ -14,25 +14,21 @@ import com.example.radioobserver.core.radio.pipeline.ObservationPipeline
 import com.example.radioobserver.core.radio.session.ObservationSessionOrchestrator
 import com.example.radioobserver.session.ObservationSessionPresenter
 import com.example.radioobserver.wifi.AndroidWifiObservationSource
+import androidx.compose.runtime.mutableStateOf
+import com.example.radioobserver.core.radio.ui.ObservationUiState
+import com.example.radioobserver.ui.RadioObserverControlScreen
 import java.util.concurrent.atomic.AtomicBoolean
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 
 /**
  * Phase 3-pending entry point. Phase 2.6 wiring state, honestly stated:
  * - WIRED: Activity RESUMED/paused/stopped/destroyed -> [ObservationLifecycleBridge] ->
  *   [RadioObservationSupervisor] foreground eligibility (default FALSE). Losing RESUMED
  *   stops any active BLE/Wi-Fi session; cleanup is idempotent.
- * - INERT BY DESIGN: the observation sources are constructed but nothing starts a session
- *   here. No auto-start on create/resume/restore; an explicit start call (Phase 3 UI)
- *   plus fresh permission/capability checks is still required for any observation.
- * - No scanning code, no permission dialogs, and no live data exist in this placeholder.
+ * - Phase 3.5: the real Material 3 Turkish control screen renders the orchestrator's
+ *   sanitized state and forwards ONLY genuine button clicks to the presenter. No
+ *   auto-start on create/resume/restore/recomposition; observation still requires an
+ *   explicit user Start tap plus fresh permission/capability gates (Phase 3.3/3.4).
+ * - No feed/detail/recovery screens exist yet (Tasks 3.6/3.7).
  */
 class MainActivity : ComponentActivity() {
 
@@ -45,11 +41,17 @@ class MainActivity : ComponentActivity() {
     // Phase 3.5 Compose Start control will call it). Nothing here starts observation.
     private lateinit var permissionFlowController: PermissionFlowController
 
-    // Phase 3.4: the production session call path (orchestrator + presenter). Registered
-    // here but deliberately INERT: no Start/Stop button exists yet (Phase 3.5); nothing
-    // is invoked by onCreate/onStart/onResume, permission callbacks or recreation.
+    // Phase 3.4: the production session call path (orchestrator + presenter). The
+    // Phase 3.5 control screen wires REAL user Start/Stop taps to the presenter.
     private lateinit var sessionOrchestrator: ObservationSessionOrchestrator
     private lateinit var sessionPresenter: ObservationSessionPresenter
+
+    // Phase 3.5: Activity-scoped Compose state holder — the single source of truth for
+    // the control screen. Session statuses come ONLY from the 3.4 orchestrator; the
+    // locationAccess field is refreshed by the 3.3 permission controller (never a
+    // session status — a grant alone changes nothing; the two-tap rule stands). The
+    // holder dies with this Activity: recreation starts from a fresh inert state.
+    private val controlUiState = mutableStateOf(ObservationUiState.initial())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,15 +71,22 @@ class MainActivity : ComponentActivity() {
         permissionFlowController = PermissionFlowController(
             activity = this,
             gateway = AndroidPermissionGateway(applicationContext),
-            onStateChange = { /* wired by the 3.5 control screen; inert until then */ },
+            // 3.5 wiring: refresh ONLY the location-access field of the control state.
+            // This callback cannot start anything (3.3's effect type has no start
+            // member) and never replays a pending Start tap (two-tap rule).
+            onStateChange = { flow ->
+                controlUiState.value = controlUiState.value.copy(
+                    locationAccess = flow.locationAccess)
+            },
         )
-        // Phase 3.4 wiring: explicit-user-tap-only observation path. The 3.5 Compose Start
-        // control will call sessionPresenter.onUserStartBleTap()/onUserStartWifiTap();
-        // until then these entry points are never invoked. The pipeline uses the wall
-        // clock; the supervisor supplies live foreground eligibility at tap time.
+        // Phase 3.4 wiring: explicit-user-tap-only observation path. The Phase 3.5
+        // control screen invokes sessionPresenter.onUserStartBleTap()/onUserStartWifiTap()
+        // ONLY from real button clicks; no implicit trigger exists. The pipeline uses the
+        // wall clock; the supervisor supplies live foreground eligibility at tap time.
         sessionOrchestrator = ObservationSessionOrchestrator(
             supervisor = observationSupervisor,
             pipelineFactory = { ObservationPipeline(clock = { System.currentTimeMillis() }) },
+            onUiState = { state -> controlUiState.value = state },
         )
         sessionPresenter = ObservationSessionPresenter(
             orchestrator = sessionOrchestrator,
@@ -96,20 +105,17 @@ class MainActivity : ComponentActivity() {
             ),
         )
         setContent {
-            MaterialTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "Radio Observer",
-                            style = MaterialTheme.typography.headlineMedium,
-                        )
-                        Text(
-                            text = "Phase 1 foundation. No scanning, no permissions, no data collection.",
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
-                }
-            }
+            // Phase 3.5: the real Turkish control screen. Actions leave ONLY through
+            // these user-click callbacks into the 3.4 presenter; composition,
+            // recomposition, resume, permission callbacks and recreation dispatch
+            // NOTHING on their own. The state is the orchestrator's sanitized snapshot.
+            RadioObserverControlScreen(
+                state = controlUiState.value,
+                onStartBle = sessionPresenter::onUserStartBleTap,
+                onStopBle = sessionPresenter::onUserStopBleTap,
+                onStartWifi = sessionPresenter::onUserStartWifiTap,
+                onStopWifi = sessionPresenter::onUserStopWifiTap,
+            )
         }
     }
 }
