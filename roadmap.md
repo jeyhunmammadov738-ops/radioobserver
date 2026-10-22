@@ -215,9 +215,9 @@ operation OFF; no manifest permission additions yet.
     LEVEL ONLY; real-device reception, permission UX, OEM behavior: UNVERIFIED. Phase 3
     remains not started.
 
-Current focus: Phase 3 task 3.10 (device-free quality gate and phase handover) — NOT AUTHORIZED FOR IMPLEMENTATION; 3.1–3.9 complete, 3.10 not started.
+Current focus: none — Phases 1-3 complete (5/5, 8/8, 10/10). Any further work requires a new authorized roadmap.
 
-## Phase 3 — Friendly Compose UI & Live Observation State (in progress; 9/10 done)
+## Phase 3 — Friendly Compose UI & Live Observation State (COMPLETE: 10/10 done)
 
 Detailed proposal: `docs/phase3-proposal.md`. Developer authorization (2026-10-20): the
 ten tasks below are recorded in the established order; tasks 3.1 and 3.2 were authorized
@@ -438,7 +438,22 @@ raw-address/BSSID reveal control.
     (two-tap Start, no auto-start, receive-only Wi-Fi, sanitized data only).
     UNVERIFIED: real TalkBack, measured contrast, runtime font-scale layout,
     dark-mode render, on-device clicks.
-- [ ] **3.10** Device-free quality gate and phase handover — NOT started (authorized later)
+- [x] **3.10** Device-free quality gate and phase handover
+  - Evidence (2026-10-22): fresh final-tree gate on clean tree @ 38aa7ca:
+    :core:radio:test --rerun-tasks EXIT 0 (21 suites, 223/223, 0 skipped, recalculated
+    from fresh JUnit XML); :app:testDebugUnitTest --rerun-tasks EXIT 0 (0 tests, none
+    configured); :app:assembleDebug EXIT 0 (APK identity com.hjinlabs.radioobserver,
+    versionCode 1 / versionName 0.1.0-phase1, permissions unchanged, signing
+    non-mutated); :app:lintDebug --rerun-tasks EXIT 0 (0 errors, 15 warnings — same
+    baseline set, no new findings). Contract matrix A-J and privacy review mapped to
+    source + host tests in docs/phase3-quality-gate-handover.md (explicit-user-only
+    Start, two-tap rule, independent sessions, foreground-loss teardown, no
+    resurrection, sanitized-only UI, session-local row IDs, 200/15-min bounds,
+    passive Wi-Fi, qualitative RSSI). 3.1-3.9 evidence is historical and was not
+    rerun individually. Real-device matrix explicitly UNVERIFIED (permission
+    dialogs, Settings Intents, BLE/Wi-Fi reception, OEM lifecycle, Compose clicks,
+    TalkBack, font scaling, dark mode). Status: device-free code/host gate PASSED —
+    NOT release certification, field validation or Play Store readiness.
 
 ## Binding scope and honesty rules (all phases)
 
