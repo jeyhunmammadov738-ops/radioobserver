@@ -215,9 +215,9 @@ operation OFF; no manifest permission additions yet.
     LEVEL ONLY; real-device reception, permission UX, OEM behavior: UNVERIFIED. Phase 3
     remains not started.
 
-Current focus: Phase 3 task 3.9 (accessibility, responsive layout and polish) — NOT AUTHORIZED FOR IMPLEMENTATION; 3.1–3.8 complete, 3.9–3.10 not started.
+Current focus: Phase 3 task 3.10 (device-free quality gate and phase handover) — NOT AUTHORIZED FOR IMPLEMENTATION; 3.1–3.9 complete, 3.10 not started.
 
-## Phase 3 — Friendly Compose UI & Live Observation State (in progress; 8/10 done)
+## Phase 3 — Friendly Compose UI & Live Observation State (in progress; 9/10 done)
 
 Detailed proposal: `docs/phase3-proposal.md`. Developer authorization (2026-10-20): the
 ten tasks below are recorded in the established order; tasks 3.1 and 3.2 were authorized
@@ -420,7 +420,24 @@ raw-address/BSSID reveal control.
     re-verified: no raw identifiers in UI, no persistent history, session-local rows,
     200/15-min bounds unchanged, Wi-Fi receive-only. UNVERIFIED: real Android lifecycle
     delivery, configuration-change timing, on-device permission races, OEM behavior.
-- [ ] **3.9** Accessibility, responsive layout and polish — NOT started (authorized later)
+- [x] **3.9** Accessibility, responsive layout and polish
+  - Evidence (2026-10-22): source-level audit of every Phase 3 surface
+    (docs/phase3-accessibility-responsive-polish.md) — met criteria documented, no
+    churn. 4 proven defects fixed: (A) screen-reader description dropped the visible
+    session-limit text on the control card status row (merged description now carries
+    it); (B) no heading semantics on control/feed/detail/card titles (heading()
+    added); (C) filter chips lacked explicit 48dp touch targets and the chip Row
+    could overflow at large font scales (heightIn(min=48dp) + FlowRow wrap, existing
+    foundation API, no new dependency); (D) Turkish polish: ambiguous "Oturum kaydı
+    (oturuma özel)" label now "Oturum kaydı (yalnızca bu oturumda geçerli)" +
+    strings.xml indentation fix; no honesty/privacy wording strengthened. No pure
+    projection changed → no new host tests required; existing behavioral matrix
+    passes: 223/223; :app:testDebugUnitTest 0 tests (none configured);
+    compile/assemble/lint all EXIT 0; lint 0 errors, 15 warnings (baseline
+    unchanged). APK identity/permissions unchanged. All 3.3-3.8 invariants intact
+    (two-tap Start, no auto-start, receive-only Wi-Fi, sanitized data only).
+    UNVERIFIED: real TalkBack, measured contrast, runtime font-scale layout,
+    dark-mode render, on-device clicks.
 - [ ] **3.10** Device-free quality gate and phase handover — NOT started (authorized later)
 
 ## Binding scope and honesty rules (all phases)

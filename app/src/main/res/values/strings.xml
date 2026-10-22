@@ -90,7 +90,7 @@
     <string name="last_seen_format">Son görülme: %1$s</string>
     <string name="detail_title">Gözlem ayrıntısı</string>
     <string name="detail_unavailable">Bu gözlem artık mevcut değil; oturum sona erdi, kayıt süresi doldu ya da değişti. Geri dönebilirsiniz.</string>
-        <string name="detail_field_source">Kaynak</string>
+    <string name="detail_field_source">Kaynak</string>
     <string name="detail_field_manufacturer">Üretici ipucu</string>
     <string name="detail_field_type">Tür ipucu</string>
     <string name="detail_field_confidence">Güven düzeyi</string>
@@ -98,7 +98,7 @@
     <string name="detail_field_freshness">Tazelik</string>
     <string name="detail_field_locally_administered">Yerel olarak atanmış adres</string>
     <string name="detail_field_last_seen">Son görülme</string>
-    <string name="detail_field_row_label">Oturum kaydı (oturuma özel)</string>
+    <string name="detail_field_row_label">Oturum kaydı (yalnızca bu oturumda geçerli)</string>
     <string name="value_yes">Evet</string>
     <string name="value_no">Hayır</string>
     <string name="value_not_available">Bilinmiyor</string>

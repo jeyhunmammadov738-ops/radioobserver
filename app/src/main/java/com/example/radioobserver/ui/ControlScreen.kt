@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.example.radioobserver.R
@@ -71,6 +72,7 @@ fun RadioObserverControlScreen(
             Text(
                 text = stringResource(R.string.control_title),
                 style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.semantics { heading() },
             )
             Text(
                 text = stringResource(R.string.home_intro),
@@ -175,7 +177,12 @@ private fun RadioControlCard(
     onRecheck: () -> Unit = {},
 ) {
     val statusLabel = statusLabel(session.status)
-    val statusText = stringResource(R.string.a11y_status_format, statusLabel)
+    val limitSeconds = ControlScreenProjection.sessionLimitSeconds(session)
+    // 3.9 fix: the merged row description must carry the SAME facts the sighted row
+    // shows. Previously the session limit was visible but silently dropped from
+    // accessibility semantics.
+    val statusText = stringResource(R.string.a11y_status_format, statusLabel) +
+        (limitSeconds?.let { ", " + stringResource(R.string.session_limit_format, it) } ?: "")
     // A11y descriptions are composed OUTSIDE semantics{} (non-composable context):
     val startA11y = stringResource(R.string.a11y_start_button_format, startLabel, radioName, statusText)
     val stopA11y = stringResource(R.string.a11y_stop_button_format, stopLabel, radioName, statusText)
@@ -184,7 +191,11 @@ private fun RadioControlCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(text = title, style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() },
+            )
             Row(
                 modifier = Modifier.semantics { contentDescription = statusText },
             ) {
@@ -193,7 +204,7 @@ private fun RadioControlCard(
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.weight(1f),
                 )
-                ControlScreenProjection.sessionLimitSeconds(session)?.let { seconds ->
+                limitSeconds?.let { seconds ->
                     Text(
                         text = stringResource(R.string.session_limit_format, seconds),
                         style = MaterialTheme.typography.bodySmall,

@@ -2,6 +2,8 @@ package com.example.radioobserver.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.example.radioobserver.R
@@ -51,6 +54,7 @@ import java.util.Locale
  * Compile-gated only: real click delivery, TalkBack, layout and font scaling are
  * UNVERIFIED in this device-free iteration.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ObservationsFeedScreen(
     state: ObservationUiState,
@@ -71,14 +75,18 @@ fun ObservationsFeedScreen(
                 Text(
                     text = stringResource(R.string.feed_title),
                     style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics { heading() },
                 )
                 OutlinedButton(
                     onClick = onBack,
                     modifier = Modifier.heightIn(min = 48.dp),
                 ) { Text(stringResource(R.string.feed_back)) }
             }
-            Row(
+            // 3.9 fix: FlowRow wraps chips instead of overflowing at large font
+            // scales; each chip keeps an explicit 48dp minimum touch target.
+            FlowRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
@@ -88,16 +96,19 @@ fun ObservationsFeedScreen(
                     selected = filter == FeedFilter.ALL,
                     onClick = { onFilterChange(FeedFilter.ALL) },
                     label = { Text(stringResource(R.string.filter_all)) },
+                    modifier = Modifier.heightIn(min = 48.dp),
                 )
                 FilterChip(
                     selected = filter == FeedFilter.BLUETOOTH,
                     onClick = { onFilterChange(FeedFilter.BLUETOOTH) },
                     label = { Text(stringResource(R.string.filter_bluetooth)) },
+                    modifier = Modifier.heightIn(min = 48.dp),
                 )
                 FilterChip(
                     selected = filter == FeedFilter.WIFI,
                     onClick = { onFilterChange(FeedFilter.WIFI) },
                     label = { Text(stringResource(R.string.filter_wifi)) },
+                    modifier = Modifier.heightIn(min = 48.dp),
                 )
             }
             when (ObservationFeedProjection.emptyKind(state, filter)) {
@@ -181,7 +192,9 @@ fun ObservationDetailScreen(
                 Text(
                     text = stringResource(R.string.detail_title),
                     style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics { heading() },
                 )
                 OutlinedButton(
                     onClick = onBack,
