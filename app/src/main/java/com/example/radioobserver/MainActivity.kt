@@ -19,12 +19,16 @@ import com.example.radioobserver.core.radio.pipeline.ObservationPipeline
 import com.example.radioobserver.core.radio.session.ObservationSessionOrchestrator
 import com.example.radioobserver.session.ObservationSessionPresenter
 import com.example.radioobserver.wifi.AndroidWifiObservationSource
+import com.example.radioobserver.history.HistoryController
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.mutableStateOf
 import com.example.radioobserver.core.radio.ui.ObservationFeedProjection.FeedFilter
 import com.example.radioobserver.ui.ObservationDetailScreen
 import com.example.radioobserver.ui.ObservationsFeedScreen
 import com.example.radioobserver.core.radio.ui.ObservationUiState
+import com.example.radioobserver.ui.HistoryDetailScreen
+import com.example.radioobserver.ui.HistoryFilter
+import com.example.radioobserver.ui.HistoryScreen
 import com.example.radioobserver.ui.RadioObserverControlScreen
 import com.example.radioobserver.diag.FieldDiagnostics
 import com.example.radioobserver.ui.FieldDiagnosticsPanel
@@ -76,9 +80,20 @@ class MainActivity : ComponentActivity() {
         data object Home : Screen
         data object Observations : Screen
         data class ObservationDetail(val rowId: String) : Screen
+        // Optional local history (post-roadmap feature): pure navigation, inert for
+        // sessions/permissions/scanning. Opening it changes NO live state.
+        data object History : Screen
+        data class HistoryDetail(val recordId: String) : Screen
     }
     private val currentScreen = mutableStateOf<Screen>(Screen.Home)
     private val feedFilter = mutableStateOf(FeedFilter.ALL)
+    private val historyFilter = mutableStateOf(HistoryFilter.ALL)
+
+    // OPTIONAL LOCAL HISTORY (post-roadmap feature, developer-approved 2026-10-23).
+    // Default OFF; recording needs explicit user consent on the History screen.
+    // The controller is the one-way live→history bridge; all its work is inert for
+    // observation (no session, permission or scanning state can change from here).
+    private lateinit var historyController: HistoryController
 
     override fun onResume() {
         super.onResume()
@@ -143,10 +158,18 @@ class MainActivity : ComponentActivity() {
         // control screen invokes sessionPresenter.onUserStartBleTap()/onUserStartWifiTap()
         // ONLY from real button clicks; no implicit trigger exists. The pipeline uses the
         // wall clock; the supervisor supplies live foreground eligibility at tap time.
+        // Optional history: fed with EVERY orchestrator publication (event-driven, not
+        // recomposition-driven). The controller's tracker dedups to one bounded snapshot
+        // per session-local observation and never injects anything back.
+        historyController = HistoryController(applicationContext)
+        historyController.initialize()
         sessionOrchestrator = ObservationSessionOrchestrator(
             supervisor = observationSupervisor,
             pipelineFactory = { ObservationPipeline(clock = { System.currentTimeMillis() }) },
-            onUiState = { state -> controlUiState.value = state },
+            onUiState = { state ->
+                controlUiState.value = state
+                historyController.onLiveRows(state.rows)
+            },
         )
         sessionPresenter = ObservationSessionPresenter(
             orchestrator = sessionOrchestrator,
@@ -200,6 +223,7 @@ class MainActivity : ComponentActivity() {
                     onStartWifi = sessionPresenter::onUserStartWifiTap,
                     onStopWifi = sessionPresenter::onUserStopWifiTap,
                     onOpenObservations = { currentScreen.value = Screen.Observations },
+                    onOpenHistory = { currentScreen.value = Screen.History },
                     // 3.7 recovery actions: guarded, user-invoked ONLY; the controller
                     // reports failure honestly (no success claim, no permission grant
                     // before OS state confirms it).
@@ -228,6 +252,38 @@ class MainActivity : ComponentActivity() {
                         state = controlUiState.value,
                         rowId = screen.rowId,
                         onBack = { currentScreen.value = Screen.Observations },
+                    )
+                }
+                is Screen.History -> {
+                    BackHandler { currentScreen.value = Screen.Home }
+                    HistoryScreen(
+                        state = historyController.state.value,
+                        filter = historyFilter.value,
+                        onFilterChange = { historyFilter.value = it },
+                        onConsentChange = { consent ->
+                            if (consent.recordingEnabled != historyController.state.value.consent.recordingEnabled) {
+                                historyController.setRecordingEnabled(consent.recordingEnabled)
+                            }
+                            if (consent.wifiNamesEnabled != historyController.state.value.consent.wifiNamesEnabled) {
+                                historyController.setWifiNamesEnabled(consent.wifiNamesEnabled)
+                            }
+                        },
+                        onRetentionChange = { historyController.setRetentionDays(it) },
+                        onDeleteOne = { historyController.deleteOne(it) },
+                        onClearAll = { historyController.clearAll() },
+                        onDismissNotices = { historyController.dismissNotices() },
+                        onOpenDetail = { recordId ->
+                            currentScreen.value = Screen.HistoryDetail(recordId)
+                        },
+                        onBack = { currentScreen.value = Screen.Home },
+                    )
+                }
+                is Screen.HistoryDetail -> {
+                    BackHandler { currentScreen.value = Screen.History }
+                    HistoryDetailScreen(
+                        record = historyController.state.value.records
+                            .firstOrNull { it.id == screen.recordId },
+                        onBack = { currentScreen.value = Screen.History },
                     )
                 }
             }

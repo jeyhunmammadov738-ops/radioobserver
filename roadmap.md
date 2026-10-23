@@ -305,7 +305,20 @@ supervisor + orchestrator and proves cached rows survive into uiState.rows
 (core 242/242, app 4/4, compile/assemble OK, lint 0 errors/15 warnings).
 Real-device repair UNVERIFIED until the retest shows the cached rows in the
 feed. Details: docs/field-test-start-permission-2026-10-23.md (seventh
-section). Details: docs/field-test-start-permission-2026-10-23.md (fifth
+section).
+
+POST-ROADMAP, SEPARATELY APPROVED FEATURE (2026-10-23): Optional Local Observation
+History (docs/optional-local-history-design.md) implemented as a post-roadmap
+addition — no phase created, no completed task reopened. Pure-JVM history package
+(minimal sanitized HistoryRecord; codec with fail-closed corruption handling;
+consent re-checked at execution time; 7/14/30-day retention hard-capped at 30;
+deterministic 500-record capacity) + app-private atomic file store (allowBackup
+already false; no new dependency) + serialized HistoryController bridge + Turkish
+Material 3 History/detail screens (recording OFF by default; separate Wi-Fi-names
+consent; filters; per-record delete; confirmed Clear All; count; retention chips).
+Host-verified this run: core 266/266 (24 new), app 6/6 (2 new), compile OK,
+assembleDebug OK, lintDebug 0 errors/16 warnings. Real-device persistence
+UNVERIFIED until retest. Details: docs/optional-local-history-implementation.md. Details: docs/field-test-start-permission-2026-10-23.md (fifth
 section).
 
 ## Phase 3 — Friendly Compose UI & Live Observation State (COMPLETE: 10/10 done)

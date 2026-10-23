@@ -55,6 +55,7 @@ fun RadioObserverControlScreen(
     onStartWifi: () -> Unit,
     onStopWifi: () -> Unit,
     onOpenObservations: () -> Unit = {},
+    onOpenHistory: () -> Unit = {},
     onOpenPermissionSettings: () -> Unit = {},
     onOpenLocationSettings: () -> Unit = {},
     onRecheckBle: () -> Unit = {},
@@ -156,6 +157,11 @@ fun RadioObserverControlScreen(
                     .heightIn(min = 48.dp)
                     .semantics { contentDescription = openFeedA11y },
             ) { Text(stringResource(R.string.open_feed_button)) }
+            // Optional local history entry (post-roadmap feature): pure navigation.
+            OutlinedButton(
+                onClick = onOpenHistory,
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) { Text(stringResource(R.string.open_history_button)) }
         }
     }
 }

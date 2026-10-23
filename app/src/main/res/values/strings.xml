@@ -18,7 +18,48 @@
     <string name="approximate_only_hint">Yaklaşık konum açık, ancak bu gözlem özelliği hassas erişim gerektirir. Seçiminizi ayarlardan değiştirebilirsiniz.</string>
     <string name="empty_feed_note">Bu oturumda gösterilecek gözlem yok. Bu, yakında cihaz olmadığını kanıtlamaz.</string>
     <string name="background_stop_note">Gözlem, aktif ekrandan ayrıldığınızda durur. Kendiliğinden yeniden başlamaz.</string>
-    <string name="privacy_body">Hiçbir gözlem yüklenmez, diske yazılmaz veya paylaşılmaz. Veriler yalnızca bu oturum boyunca cihazda, bellekte tutulur ve oturum bittiğinde silinir.</string>
+    <string name="privacy_body">Canlı gözlemler yüklenmez veya paylaşılmaz; varsayılan olarak bellekte tutulur ve oturum bittiğinde silinir. İsteğe bağlı Geçmiş kaydı açarsanız, gelecekteki gözlemlerin özetleri yalnızca bu cihazda, uygulamaya özel bir dosyada saklanır: hiçbir yere yüklenmez, yedeklenmez veya paylaşılmaz ve siz istediğinizde silebilirsiniz.</string>
+    <string name="open_history_button">Geçmiş</string>
+
+    <!-- Optional local history (post-roadmap feature, default OFF) -->
+    <string name="history_title">Gözlem Geçmişi</string>
+    <string name="history_recording_toggle">Gelecekteki gözlemleri kaydet</string>
+    <string name="history_recording_toggle_a11y">Geçmiş kaydı anahtarı: gelecekteki gözlemleri kaydet veya durdur</string>
+    <string name="history_consent_body">Kayıt varsayılan olarak KAPALI\'dır ve yalnızca siz açıkça açarsanız çalışır. Açtıktan sonra yalnızca bundan sonra gördüğünüz gözlemler kaydedilir; daha önceki gözlemler geriye dönük kaydedilmez. Kaydettikleriniz yalnızca bu cihazda saklanır: hiçbir yere yüklenmez, yedeklenmez veya paylaşılmaz. Kaydı kapatmak yeni kayıtları hemen durdurur; kayıtlı geçmişiniz silinmez ve silmek istediğinizde listeden silebilirsiniz.</string>
+    <string name="history_wifi_names_toggle">Wi-Fi ağ adlarını kaydet</string>
+    <string name="history_wifi_names_toggle_a11y">Wi-Fi ağ adlarını kaydetme anahtarı</string>
+    <string name="history_wifi_names_body">Ağ adları bulunduğunuz yeri ima edebileceği için ayrı bir izindir ve varsayılan olarak KAPALI\'dır. Açarsanız yalnızca görünen ad kaydedilir; cihaz adresi (BSSID) hiçbir koşulda kaydedilmez.</string>
+    <string name="history_retention_label">Saklama süresi</string>
+    <string name="history_retention_days">%1$d gün</string>
+    <string name="history_count">Kayıtlı gözlem sayısı: %1$d</string>
+    <string name="history_empty">Kayıtlı gözlem yok. Geçmiş kaydı kapalıyken veya kayıt açıkken yeni bir gözlem görülmedikçe bu liste boş kalır.</string>
+    <string name="history_row_line">%1$s · %2$s</string>
+    <string name="history_unnamed">Adı bilinmiyor</string>
+    <string name="history_open_detail">Ayrıntılar</string>
+    <string name="history_delete_one">Sil</string>
+    <string name="history_clear_all">Tüm geçmişi sil</string>
+    <string name="history_clear_all_a11y">Tüm geçmişi sil düğmesi</string>
+    <string name="history_clear_all_confirm_title">Geçmiş silinsin mi?</string>
+    <string name="history_clear_all_confirm_body">Tüm kayıtlı gözlemler bu cihazdan kalıcı olarak silinir. Devam eden bir gözlem oturumu durmaz.</string>
+    <string name="history_clear_all_confirm_yes">Evet, sil</string>
+    <string name="history_cancel">Vazgeç</string>
+    <string name="history_dropped_notice">Depodaki bozuk bazı kayıtlar okunamadı ve güvenli biçimde yok sayıldı. Diğer kayıtlar sağlamdır.</string>
+    <string name="history_failed_closed_notice">Geçmiş dosyası okunamadığı için içerik gizlilik gereği tamamen boşaltıldı. Kayıt ayarlarınız güvenli varsayılanlara döndürüldü.</string>
+    <string name="history_notice_dismiss">Anladım</string>
+    <string name="history_detail_title">Geçmiş Ayrıntıları</string>
+    <string name="history_detail_missing">Bu kayıt artık mevcut değil (silinmiş olabilir).</string>
+    <string name="history_detail_radio">Kaynak</string>
+    <string name="history_detail_name">Görünen ad</string>
+    <string name="history_detail_saved_at">Kaydedilme zamanı</string>
+    <string name="history_detail_observed_at">Gözlenme zamanı</string>
+    <string name="history_detail_manufacturer">Üretici ipucu</string>
+    <string name="history_detail_type">Tür ipucu</string>
+    <string name="history_detail_signal">Sinyal kategorisi</string>
+    <string name="history_detail_freshness">Kayıt anındaki tazelik</string>
+    <string name="history_detail_age">Kayıt anındaki yaş</string>
+    <string name="history_detail_age_ms">%1$d milisaniye önce</string>
+    <string name="history_detail_age_unknown">Bilinmiyor</string>
+    <string name="history_privacy_note">Bu kayıt cihazınızın dışına hiç çıkmaz. Silme, oturum veya izin durumunu hiçbir şekilde etkilemez.</string>
 
     <!-- Titles / scope honesty -->
     <string name="control_title">Radyo Gözlemi</string>
