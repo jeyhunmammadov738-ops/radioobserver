@@ -226,6 +226,18 @@ history preserved; 4 new JVM tests. Fresh gates: 227/227, lint 0 errors/15
 warnings, APK identity unchanged. Details: docs/field-test-blocked-observation-2026-10-23.md.
 Roadmap checkboxes NOT reopened; real-device re-test pending.
 
+Second field iteration (2026-10-23, later the same day): a second real-phone
+screenshot showed the transient retry hint itself LATCHED as current state
+("Etkin değil" + red start-failed copy on both cards) while the app was fully
+foreground — a stale failed-start latch after a genuine foreground return.
+Narrow fix: orchestrator onForegroundEligibilityChanged clears latched
+IDLE+NOT_ELIGIBLE hints on genuine re-eligibility (real history preserved);
+DEBUG-only privacy-safe RadioObserverDiag breadcrumbs added for the next field
+log. New tests R1-R4; gates 231/231, lint 0 errors/15 warnings. Details:
+docs/field-test-start-permission-2026-10-23.md. The underlying tap-time trigger
+remains unproven from filtered logs; diagnostics will settle it. Checkboxes
+still NOT reopened.
+
 ## Phase 3 — Friendly Compose UI & Live Observation State (COMPLETE: 10/10 done)
 
 Detailed proposal: `docs/phase3-proposal.md`. Developer authorization (2026-10-20): the

@@ -21,6 +21,7 @@ import com.example.radioobserver.ui.ObservationDetailScreen
 import com.example.radioobserver.ui.ObservationsFeedScreen
 import com.example.radioobserver.core.radio.ui.ObservationUiState
 import com.example.radioobserver.ui.RadioObserverControlScreen
+import com.example.radioobserver.diag.FieldDiagnostics
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -77,10 +78,13 @@ class MainActivity : ComponentActivity() {
         // session status itself stays untouched — a separate explicit Start (fresh
         // gates) or the user's "Yeniden kontrol et" action updates it honestly.
         permissionFlowController.onSettingsReturned()
+        FieldDiagnostics.log("activity_resume")
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // DEBUG-only, privacy-safe field diagnostics (release builds emit nothing).
+        FieldDiagnostics.initialize(applicationContext)
         // Eligibility holder: sources read this; only the supervisor (lifecycle-driven) sets it.
         val foregroundEligibility = AtomicBoolean(false)
         val bleSource = AndroidBleObservationSource(applicationContext) { foregroundEligibility.get() }
@@ -88,7 +92,13 @@ class MainActivity : ComponentActivity() {
         observationSupervisor = RadioObservationSupervisor(
             bleSource = bleSource,
             wifiSource = wifiSource,
-        ) { eligible -> foregroundEligibility.set(eligible) }
+        ) { eligible ->
+            foregroundEligibility.set(eligible)
+            // Field fix 2 (2026-10-23, second phone): a genuine foreground re-entry must
+            // not leave the transient NOT_ELIGIBLE hint latched as current state.
+            sessionOrchestrator.onForegroundEligibilityChanged(eligible)
+            FieldDiagnostics.log("eligibility_changed", "eligible" to eligible)
+        }
         observationLifecycleBridge = ObservationLifecycleBridge(this, observationSupervisor)
         // 3.3 registration (before the activity reaches STARTED); the state listener stays
         // a no-op until the Phase 3.5 control screen consumes PermissionFlowState. The

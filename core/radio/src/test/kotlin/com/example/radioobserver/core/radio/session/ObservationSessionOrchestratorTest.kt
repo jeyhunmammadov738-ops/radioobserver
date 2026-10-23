@@ -133,6 +133,69 @@ class ObservationSessionOrchestratorTest {
         assertNull(snap.wifiSession.issueKey)
     }
 
+    // R (second field iteration 2026-10-23) -------------------------------
+
+    @Test
+    fun `R1 - genuine foreground return clears a latched transient NOT_ELIGIBLE hint`() {
+        val orch = orchestrator()
+        orch.startBleSession(
+            StartAuthorization(foregroundEligible = false, preciseLocation = true,
+                capabilityReady = true)) // transient rejection -> IDLE + NOT_ELIGIBLE
+        orch.startWifiObservation(
+            StartAuthorization(foregroundEligible = false, preciseLocation = true,
+                capabilityReady = true))
+        orch.onForegroundEligibilityChanged(true) // genuine re-entry
+        val snap = states.last()
+        assertEquals(RadioSessionUiStatus.IDLE, snap.bleSession.status)
+        assertNull(snap.bleSession.issueKey)
+        assertEquals(RadioSessionUiStatus.IDLE, snap.wifiSession.status)
+        assertNull(snap.wifiSession.issueKey)
+    }
+
+    @Test
+    fun `R2 - real terminal history is never overwritten by the eligibility clearing`() {
+        val orch = orchestrator()
+        supervisor.onHostResumed()
+        orch.startBleSession(fullAuth)
+        orch.startWifiObservation(fullAuth)
+        supervisor.onHostPaused() // real foreground loss: truthful STOPPED history
+        // Transient rejection on top of real history keeps it (Q2 contract) ...
+        orch.startBleSession(
+            StartAuthorization(foregroundEligible = false, preciseLocation = true,
+                capabilityReady = true))
+        // ... and the eligibility clearing must not erase the truthful history either.
+        orch.onForegroundEligibilityChanged(true)
+        val snap = states.last()
+        assertEquals(RadioSessionUiStatus.STOPPED, snap.bleSession.status)
+        assertEquals(SessionIssueKey.FOREGROUND_LOST, snap.bleSession.issueKey)
+        assertEquals(RadioSessionUiStatus.STOPPED, snap.wifiSession.status)
+        assertEquals(SessionIssueKey.FOREGROUND_LOST, snap.wifiSession.issueKey)
+    }
+
+    @Test
+    fun `R3 - eligibility LOST transition publishes nothing and stops nothing here`() {
+        val orch = orchestrator()
+        val before = states.size
+        orch.onForegroundEligibilityChanged(false)
+        assertEquals(before, states.size)
+    }
+
+    @Test
+    fun `R4 - clearing touches nothing but a latched IDLE-plus-NOT_ELIGIBLE state`() {
+        val orch = orchestrator()
+        supervisor.onHostResumed()
+        orch.startBleSession(fullAuth) // BLE actively observing
+        orch.startWifiObservation(
+            StartAuthorization(foregroundEligible = false, preciseLocation = true,
+                capabilityReady = true)) // Wi-Fi latched transient hint
+        orch.onForegroundEligibilityChanged(true)
+        val snap = states.last()
+        assertEquals(RadioSessionUiStatus.OBSERVING, snap.bleSession.status)
+        assertNull(snap.bleSession.issueKey)
+        assertEquals(RadioSessionUiStatus.IDLE, snap.wifiSession.status)
+        assertNull(snap.wifiSession.issueKey)
+    }
+
     // A -----------------------------------------------------------------------
 
     @Test

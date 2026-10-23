@@ -161,6 +161,32 @@ class ObservationSessionOrchestrator(
     }
 
     /**
+     * Second field iteration (2026-10-23): foreground-eligibility transition hook.
+     * When the host GENUINELY re-establishes RESUMED eligibility, a latched transient
+     * NOT_ELIGIBLE start-rejection hint is cleared: it no longer represents the
+     * current state (contract: no stale failed-start latch after a genuine
+     * foreground return). Only IDLE + NOT_ELIGIBLE is touched; real terminal
+     * history (STOPPED/TIMED_OUT/ERROR) and any active session stay untouched.
+     * The false transition publishes NOTHING: foreground teardown of real sessions
+     * is the supervisor's job (unchanged) and nothing here ever starts anything.
+     */
+    fun onForegroundEligibilityChanged(eligible: Boolean) {
+        if (!eligible) return
+        val ble = uiState.bleSession
+        val wifi = uiState.wifiSession
+        val clearBle = ble.status == RadioSessionUiStatus.IDLE &&
+            ble.issueKey == SessionIssueKey.NOT_ELIGIBLE
+        val clearWifi = wifi.status == RadioSessionUiStatus.IDLE &&
+            wifi.issueKey == SessionIssueKey.NOT_ELIGIBLE
+        if (clearBle || clearWifi) {
+            publish(uiState.copy(
+                bleSession = if (clearBle) RadioSessionUiState.idle(RadioType.BLE) else ble,
+                wifiSession = if (clearWifi) RadioSessionUiState.idle(RadioType.WIFI) else wifi,
+            ))
+        }
+    }
+
+    /**
      * Field fix (2026-10-23): transient ineligibility feedback that NEVER fabricates a
      * session stop or permanent unavailability. Only an IDLE radio (nothing ever
      * observed in this session window) gains the typed retry hint, keeping its truthful

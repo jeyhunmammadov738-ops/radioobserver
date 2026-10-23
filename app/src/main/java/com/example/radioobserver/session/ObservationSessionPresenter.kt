@@ -7,6 +7,7 @@ import com.example.radioobserver.core.radio.permissions.ObservationReadinessMode
 import com.example.radioobserver.core.radio.permissions.ReadinessBlocker
 import com.example.radioobserver.core.radio.session.ObservationSessionOrchestrator
 import com.example.radioobserver.core.radio.session.ObservationSessionOrchestrator.StartAuthorization
+import com.example.radioobserver.diag.FieldDiagnostics
 import com.example.radioobserver.core.radio.ui.PermissionFlowScope
 import com.example.radioobserver.core.radio.ui.RadioSessionUiStatus
 import com.example.radioobserver.core.radio.ui.SessionIssueKey
@@ -63,6 +64,7 @@ class ObservationSessionPresenter(
     fun onUserRecheckWifiTap() = onUserRecheckTap(RadioType.WIFI)
 
     private fun onUserRecheckTap(radio: RadioType) {
+        FieldDiagnostics.log("recheck_tap", "radio" to radio)
         val grants = permissionGateway.snapshot()
         val missingRuntime = !grants.fineLocation ||
             (radio == RadioType.BLE && !grants.bluetoothScan)
@@ -97,6 +99,7 @@ class ObservationSessionPresenter(
         val missingRuntime = !grants.fineLocation ||
             (radio == RadioType.BLE && !grants.bluetoothScan)
         if (missingRuntime) {
+            FieldDiagnostics.log("start_tap_permission_path", "radio" to radio)
             permissionFlowController.onUserStartTap(
                 if (radio == RadioType.BLE) PermissionFlowScope.BLE else PermissionFlowScope.WIFI)
             return
@@ -113,10 +116,21 @@ class ObservationSessionPresenter(
             capabilityIssue = (readiness as? ObservationReadiness.Blocked)
                 ?.let { blockerIssue(it.blockers) },
         )
-        when (radio) {
+        // DEBUG-only, typed, identifier-free breadcrumb (field diagnostics, 2026-10-23).
+        FieldDiagnostics.log(
+            "start_tap",
+            "radio" to radio, "eligible" to authorization.foregroundEligible,
+            "fineLocation" to grants.fineLocation,
+            "coarseLocation" to grants.coarseLocation,
+            "btScan" to grants.bluetoothScan,
+            "readiness" to readiness::class.simpleName,
+        )
+        val attempt = when (radio) {
             RadioType.BLE -> orchestrator.startBleSession(authorization)
             RadioType.WIFI -> orchestrator.startWifiObservation(authorization)
         }
+        FieldDiagnostics.log("start_attempt", "radio" to radio,
+            "outcome" to attempt::class.simpleName)
     }
 
     private fun blockerIssue(blockers: Set<ReadinessBlocker>): SessionIssueKey? {

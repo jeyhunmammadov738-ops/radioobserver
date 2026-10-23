@@ -12,6 +12,7 @@ import com.example.radioobserver.core.radio.ui.PermissionFlowEvent
 import com.example.radioobserver.core.radio.ui.PermissionFlowReducer
 import com.example.radioobserver.core.radio.ui.PermissionFlowScope
 import com.example.radioobserver.core.radio.ui.PermissionFlowState
+import com.example.radioobserver.diag.FieldDiagnostics
 import java.util.concurrent.atomic.AtomicReference
 
 /**
@@ -67,6 +68,11 @@ class PermissionFlowController(
 
     private fun onRuntimeResult() {
         if (currentActivity.get() == null) return // destroyed: nothing to update
+        val diag = gateway.snapshot()
+        FieldDiagnostics.log("runtime_perm_result",
+            "fineLocation" to diag.fineLocation,
+            "coarseLocation" to diag.coarseLocation,
+            "btScan" to diag.bluetoothScan)
         val scope = state.get().pendingRequestScope ?: PermissionFlowScope.BLE
         val (next, _) = PermissionFlowReducer.reduce(
             state.get(),
@@ -101,6 +107,11 @@ class PermissionFlowController(
 
     /** Call when the user returns from Settings: read-only readiness refresh only. */
     fun onSettingsReturned() {
+        val diagGrants = gateway.snapshot()
+        FieldDiagnostics.log("settings_returned",
+            "fineLocation" to diagGrants.fineLocation,
+            "coarseLocation" to diagGrants.coarseLocation,
+            "btScan" to diagGrants.bluetoothScan)
         val (next, _) = PermissionFlowReducer.reduce(
             state.get(),
             PermissionFlowEvent.SettingsReturned(gateway.snapshot()),
