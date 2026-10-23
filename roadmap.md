@@ -266,6 +266,18 @@ sequence IDs and seconds-based monotonic elapsed. 3 new orchestrator stage tests
 errors/15 warnings. Details: docs/field-test-start-permission-2026-10-23.md
 (fourth section). Root cause remains UNPROVEN pending the FieldDiag-04 retest.
 
+Fifth field iteration (2026-10-23, night): FieldDiag-04 named the guard —
+stage=SOURCE_REFUSAL, issue=NOT_ELIGIBLE with every caller-side fact true. Root
+cause PROVEN: Kotlin trailing-lambda binding sent both sources' foreground lambdas
+to permanentDenialProvider, leaving foregroundEligibility at its silent { false }
+default, so both source re-gates always refused ForegroundIneligible. Fixed with
+named arguments; foregroundEligibility made a REQUIRED constructor parameter
+(misbinding can no longer compile); 3 new core wiring-regression tests (core
+237/237, app 4/4, compile/assemble OK, lint 0 errors/15 warnings). Real-device
+repair remains UNVERIFIED until the phone retest shows the radios entering
+OBSERVING. Details: docs/field-test-start-permission-2026-10-23.md (fifth
+section).
+
 ## Phase 3 — Friendly Compose UI & Live Observation State (COMPLETE: 10/10 done)
 
 Detailed proposal: `docs/phase3-proposal.md`. Developer authorization (2026-10-20): the

@@ -267,3 +267,92 @@ distinguishable on the phone via the panel marker).
    the EXACT issue + stage (gate vs source) + sourceCalled — that single typed
    fact will identify the failing guard. 5. Check "Gözlemler" separately; zero
    passive Wi-Fi results does not prove registration failure.
+
+---
+
+# Fifth Field Iteration — PROVEN Source-Level Root-Cause Fix (2026-10-23)
+
+## Authoritative FieldDiag-04 evidence
+
+Xiaomi, FieldDiag-04 APK: header orchestrator=true, source=true; both sessions
+IDLE(NOT_ELIGIBLE); tap facts fineLocation=true coarseLocation=true btScan=true
+readiness=Ready; second Start rows: start_tap radio=BLE attemptNo=2 eligible=true
+-> start_attempt radio=BLE outcome=Blocked issue=NOT_ELIGIBLE stage=SOURCE_REFUSAL
+sourceCalled=true sourceAccepted=false — same for Wi-Fi. The typed stage named the
+decision point: the SOURCE's own foreground re-gate refused while every caller-side
+fact was true.
+
+## Root cause (PROVEN by source inspection)
+
+Kotlin trailing-lambda binding: in MainActivity both sources were constructed as
+`AndroidBleObservationSource(applicationContext) { foregroundEligibility.get() }`
+(and the Wi-Fi equivalent). A trailing lambda binds to the LAST constructor
+parameter — `permanentDenialProvider: (PermissionId) -> Boolean` — NOT to
+`foregroundEligibility: () -> Boolean`. A zero-declared-param lambda satisfies
+`(PermissionId) -> Boolean` via the unused implicit `it`, so it COMPILED SILENTLY.
+Both sources therefore kept the DEFAULT `foregroundEligibility = { false }`:
+BleSessionCoordinator.startSession/WifiSessionCoordinator.startObservation re-gate
+`foregroundEligible()` FIRST (before readiness), always read false, and refused
+`ObservationError.ForegroundIneligible` — mapped by the orchestrator to
+`Blocked(NOT_ELIGIBLE, stage=SOURCE_REFUSAL)`, sessions left IDLE+NOT_ELIGIBLE.
+
+Why every previous audit missed it: the debug header's "source=true" comes from the
+SUPERVISOR SINK (RadioObservationSupervisor's correctly-bound trailing lambda — the
+sink IS its last parameter), which is a DIFFERENT state holder from the sources'
+misbound gate provider. Host/JVM tests construct the core coordinators with explicit
+arguments, so the defect existed only in the Android-layer wiring, which the host
+framework cannot instantiate (stated openly).
+
+Evidence-fit check: matches ALL field iterations — first tap took the permission
+path (presenter uses the real gateway), second tap passed the orchestrator gate
+(supervisor resumed=true) and was refused by the source re-gate (default false),
+identically for both radios, with no session start attempt (sourceCalled=true
+means the source METHOD was entered; its foreground guard fired before any scan).
+
+## Fix (smallest safe change, no guard weakened)
+
+1) MainActivity: explicit NAMED argument `foregroundEligibility = { ... }` for both
+sources. 2) Structural prevention: `foregroundEligibility` is now a REQUIRED
+constructor parameter (default `{ false }` removed) in BOTH sources — any future
+positional trailing-lambda call FAILS TO COMPILE; the fail-safe "never
+background-safe by default" property is STRENGTHENED (the live gate must now be
+supplied). No manifest/permission/version/signing change; legitimate denial is
+preserved: when the app truly leaves the foreground the supervisor sets the SAME
+live holder false and both sources still refuse with ForegroundIneligible.
+
+## Regression tests (core JVM, fakes only)
+
+W1 (BLE): shared live holder — not resumed -> ForegroundIneligible refusal with
+zero engine starts; after resume (sink sets the SAME holder) -> accepted start.
+W3 (Wi-Fi): identical independence proof for the Wi-Fi source. W2: documentation of
+the phone signature — a DETACHED gate holder (the misbinding's effect) reproduces
+the exact FieldDiag-04 refusal while a separate "sink" holder reads true. The
+Android-layer misbinding itself is not host-testable (open limitation); the
+structural compile-time guard prevents its recurrence. Previous stage tests
+(Q1-Q4, R1-R4, S1-S3) unchanged.
+
+## Gates (fresh, final tree, --no-daemon, 15-min timeouts)
+
+:core:radio:test --rerun-tasks EXIT 0 — 237/237 (234+3), 0 failed;
+:app:testDebugUnitTest --rerun-tasks EXIT 0 — 4/4; :app:compileDebugKotlin EXIT 0
+(also proves the required-parameter change compiles); :app:assembleDebug EXIT 0;
+:app:lintDebug --rerun-tasks EXIT 0 — 0 errors, 15 warnings (baseline unchanged).
+
+## APK identity (root-cause-fix build)
+
+com.hjinlabs.radioobserver, versionCode 1, versionName 0.1.0-phase1 (unchanged).
+/app/radioobserver/app/build/outputs/apk/debug/app-debug.apk — size, SHA-256 and
+packaging verification in the release notes of this iteration. Real-device repair
+remains UNVERIFIED until the phone retest below succeeds.
+
+## Phone retest (safe, decisive)
+
+1. Install this APK (uninstall the old one first; the panel chip still reads
+"Tanılama ▸ (FieldDiag-04)" — the fixed build is distinguishable by BEHAVIOR: Start
+must now show a running/observing state when eligible). 2. Bluetooth, Wi-Fi and
+Location services ON. 3. First Start per radio -> grant the OS prompts if asked;
+return to the app; SECOND Start per radio. 4. Expected: the radio cards enter
+OBSERVING (not IDLE(NOT_ELIGIBLE)); the panel's start_attempt rows show
+outcome=started sourceAccepted=true. 5. If any radio still blocks, screenshot the
+panel — the typed issue+stage will name the guard (now it can only be a genuine
+foreground/permission/radio state, not this wiring defect).

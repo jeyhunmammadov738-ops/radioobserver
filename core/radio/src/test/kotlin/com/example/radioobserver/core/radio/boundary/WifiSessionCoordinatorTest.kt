@@ -1,6 +1,7 @@
 package com.example.radioobserver.core.radio.boundary
 
 import com.example.radioobserver.core.radio.model.RadioType
+import com.example.radioobserver.core.radio.boundary.ObservationSessionSpec
 import com.example.radioobserver.core.radio.permissions.AndroidApiBucket
 import com.example.radioobserver.core.radio.permissions.CapabilitySnapshot
 import com.example.radioobserver.core.radio.permissions.ObservationReadiness
@@ -72,6 +73,27 @@ class WifiSessionCoordinatorTest {
     // ---- fixtures ----
 
     private val ready = ObservationReadiness.Ready(RadioType.WIFI, emptySet())
+
+    @Test
+    fun `W3 - shared live foreground holder gates the Wi-Fi source independently`() {
+        // Root-cause regression (FieldDiag-04): the Wi-Fi source must read the SAME live
+        // holder the supervisor sink sets — independently of BLE. Not resumed ->
+        // ForegroundIneligible; after resume -> accepted (passive registration).
+        val holder = java.util.concurrent.atomic.AtomicBoolean(false)
+        val sys = system(foreground = { holder.get() })
+        assertTrue(sys.source.startObservation(
+            ObservationSessionSpec(30_000),
+            object : ObservationSessionListener {
+                override fun onObservationEvent(event: ObservationEvent) {}
+            }) is SourceStartResult.Refused)
+        holder.set(true)
+        val started = sys.source.startObservation(
+            ObservationSessionSpec(30_000),
+            object : ObservationSessionListener {
+                override fun onObservationEvent(event: ObservationEvent) {}
+            })
+        assertTrue(started is SourceStartResult.Started)
+    }
 
     private fun blocked(vararg blockers: ReadinessBlocker) =
         ObservationReadiness.Blocked(RadioType.WIFI, blockers.toSet())

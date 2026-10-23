@@ -97,6 +97,40 @@ class BleSessionCoordinatorTest {
     // ---- 1) gating: no scan without verified gates ----
 
     @Test
+    fun `W1 - shared live foreground holder gates the BLE source correctly after resume`() {
+        // Root-cause regression (FieldDiag-04): ONE live holder owned by the supervisor
+        // sink must gate the source. Not resumed yet -> typed ForegroundIneligible;
+        // after resume -> accepted start. This is the corrected production wiring.
+        val holder = java.util.concurrent.atomic.AtomicBoolean(false)
+        val (engine, _, source) = coordinator(foreground = { holder.get() })
+        val listener = Listener()
+        assertTrue(source.startSession(BleSessionCoordinator.bleDefault(), listener)
+            is SourceStartResult.Refused)
+        assertEquals(0, engine.startCount) // no scan attempt before eligibility
+        holder.set(true) // supervisor resume: the sink sets the SAME holder
+        assertTrue(source.startSession(BleSessionCoordinator.bleDefault(), listener)
+            is SourceStartResult.Started)
+        assertEquals(1, engine.startCount)
+    }
+
+    @Test
+    fun `W2 - detached gate holder reproduces the FieldDiag-04 phone signature`() {
+        // Documentation of the DEFECT: the sink's holder (read by the debug header)
+        // is true, but the source's gate provider was misbound to a different holder
+        // that stays false -> ForegroundIneligible refusal with the panel claiming
+        // source=true. The Android-layer misbinding itself is NOT host-testable; this
+        // pins the observable decision signature it produced on the phone.
+        val sinkHolder = java.util.concurrent.atomic.AtomicBoolean(true)
+        val misboundGateHolder = java.util.concurrent.atomic.AtomicBoolean(false)
+        val (engine, _, source) = coordinator(foreground = { misboundGateHolder.get() })
+        assertTrue(sinkHolder.get()) // what the FieldDiag-04 header displayed
+        val result = source.startSession(BleSessionCoordinator.bleDefault(), Listener())
+        assertTrue((result as SourceStartResult.Refused).error
+            is ObservationError.ForegroundIneligible)
+        assertEquals(0, engine.startCount)
+    }
+
+    @Test
     fun `foreground ineligible refuses without touching the engine`() {
         val (engine, _, source) = coordinator(foreground = { false })
         val result = source.startSession(BleSessionCoordinator.bleDefault(), Listener())

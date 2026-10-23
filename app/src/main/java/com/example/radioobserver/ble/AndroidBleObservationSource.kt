@@ -27,7 +27,10 @@ import com.example.radioobserver.core.radio.permissions.PermissionId
  */
 class AndroidBleObservationSource(
     context: Context,
-    foregroundEligibility: () -> Boolean = { false },
+    // REQUIRED since the FieldDiag-04 root-cause fix: a trailing lambda used to bind
+    // to permanentDenialProvider, silently leaving this at the { false } default and
+    // refusing every real-phone Start. No default: the live gate MUST be supplied.
+    foregroundEligibility: () -> Boolean,
     permanentDenialProvider: (PermissionId) -> Boolean = { false },
 ) : BleObservationSource, ForegroundLossAwareSource {
 

@@ -97,8 +97,21 @@ class MainActivity : ComponentActivity() {
         FieldDiagnostics.initialize(applicationContext)
         // Eligibility holder: sources read this; only the supervisor (lifecycle-driven) sets it.
         val foregroundEligibility = AtomicBoolean(false)
-        val bleSource = AndroidBleObservationSource(applicationContext) { foregroundEligibility.get() }
-        val wifiSource = AndroidWifiObservationSource(applicationContext) { foregroundEligibility.get() }
+        // ROOT-CAUSE FIX (2026-10-23, fifth field iteration): the trailing lambda used
+        // to bind to the LAST constructor parameter (permanentDenialProvider), NOT to
+        // foregroundEligibility — so both sources kept the DEFAULT { false } gate and
+        // ALWAYS refused with ForegroundIneligible on the real phone (FieldDiag-04:
+        // stage=SOURCE_REFUSAL, issue=NOT_ELIGIBLE with every fact true). Named
+        // arguments make the binding explicit; the sources now make the parameter
+        // REQUIRED, so this misbinding class can never compile again.
+        val bleSource = AndroidBleObservationSource(
+            applicationContext,
+            foregroundEligibility = { foregroundEligibility.get() },
+        )
+        val wifiSource = AndroidWifiObservationSource(
+            applicationContext,
+            foregroundEligibility = { foregroundEligibility.get() },
+        )
         observationSupervisor = RadioObservationSupervisor(
             bleSource = bleSource,
             wifiSource = wifiSource,

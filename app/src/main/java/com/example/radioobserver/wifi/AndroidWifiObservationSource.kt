@@ -28,7 +28,9 @@ import com.example.radioobserver.core.radio.permissions.PermissionId
  */
 class AndroidWifiObservationSource(
     context: Context,
-    foregroundEligibility: () -> Boolean = { false },
+    // REQUIRED since the FieldDiag-04 root-cause fix (same trailing-lambda defect as
+    // the BLE source): the live foreground gate MUST be supplied explicitly.
+    foregroundEligibility: () -> Boolean,
     permanentDenialProvider: (PermissionId) -> Boolean = { false },
 ) : WifiObservationSource, ForegroundLossAwareSource {
 
