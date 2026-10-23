@@ -275,7 +275,24 @@ named arguments; foregroundEligibility made a REQUIRED constructor parameter
 (misbinding can no longer compile); 3 new core wiring-regression tests (core
 237/237, app 4/4, compile/assemble OK, lint 0 errors/15 warnings). Real-device
 repair remains UNVERIFIED until the phone retest shows the radios entering
-OBSERVING. Details: docs/field-test-start-permission-2026-10-23.md (fifth
+OBSERVING.
+
+Sixth field iteration (2026-10-23, night): the root-cause-fix build let BOTH
+radios enter Observing on the phone (BLE delivered rows; the FieldDiag-04
+wiring defect is closed pending no regression in the next retest), but the
+30-second passive Wi-Fi session showed zero entries. Proven gap: the
+coordinator read getScanResults ONLY on scan-results broadcasts, so zero
+results was expected whenever no system/other-app scan occurred in the window.
+Fix: ONE guarded cached-result read on explicit gated Wi-Fi Start (API 29+
+cached results; never startScan), delivered honestly as NOT-new with per-record
+age; empty/failed read never stops the session. Narrow DEBUG-only wifi_evidence
+rows (raw count, broadcast flag, receiver registration) added for the next
+field check. 4 new coordinator tests, existing tests consciously updated for
+the intentional behavior change (core 241/241, app 4/4, compile/assemble OK,
+lint 0 errors/15 warnings). Separately, a DESIGN-ONLY privacy proposal for
+optional local history was written (docs/optional-local-history-design.md);
+nothing persistent was implemented. Details: docs/field-test-start-permission
+-2026-10-23.md (sixth section). Details: docs/field-test-start-permission-2026-10-23.md (fifth
 section).
 
 ## Phase 3 — Friendly Compose UI & Live Observation State (COMPLETE: 10/10 done)

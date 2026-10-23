@@ -186,24 +186,89 @@ class WifiSessionCoordinatorTest {
             outcome = WifiFetchOutcome.Results(listOf(record())) })
         val listener = Listener()
         sys.source.startObservation(WifiSessionCoordinator.wifiDefault(), listener)
+        // Initial cached read (honest, marked NOT new) + the broadcast fetch.
+        assertEquals(1, sys.fetcher.fetchCount)
+        val initial = listener.events.filterIsInstance<ObservationEvent.WifiResultsAvailable>().single()
+        assertFalse(initial.updatedSinceLastDelivery)
 
         sys.fixtureEngine.callback!!.onScanResultsBroadcast(updated = true)
 
-        val delivery = listener.events.filterIsInstance<ObservationEvent.WifiResultsAvailable>().single()
+        val delivery = listener.events.filterIsInstance<ObservationEvent.WifiResultsAvailable>().last()
         assertEquals(1, delivery.observations.size)
         assertTrue(delivery.updatedSinceLastDelivery)
         assertEquals("wifi:aa:bb:cc:dd:ee:ff", delivery.observations.single().observationKey)
         assertEquals("Cafe", delivery.observations.single().displayName) // display hint only
         assertNotNull(delivery.observations.single().manufacturerCandidate)
-        assertEquals(1, sys.fetcher.fetchCount)
+        assertEquals(2, sys.fetcher.fetchCount)
+    }
+
+    @Test
+    fun `I0 - explicit start reads the cached result list once and delivers it as NOT new`() {
+        val sys = system(fetcher = FakeFetcher().apply {
+            outcome = WifiFetchOutcome.Results(listOf(record(ageMs = 120_000))) })
+        val listener = Listener()
+        val result = sys.source.startObservation(WifiSessionCoordinator.wifiDefault(), listener)
+        assertTrue(result is SourceStartResult.Started)
+        assertEquals(1, sys.fetcher.fetchCount) // exactly one initial read, no polling
+        val delivery = listener.events.filterIsInstance<ObservationEvent.WifiResultsAvailable>().single()
+        assertFalse(delivery.updatedSinceLastDelivery) // cached, never labeled newly detected
+        assertEquals(120_000L, delivery.resultsAgeMs) // honest age passes through
+        assertEquals(1, delivery.observations.size)
+        // Provenance: the flag and age travel per observation.
+        assertEquals("false", delivery.observations.single().sourceFields["resultsUpdatedFlag"])
+        assertEquals("120000", delivery.observations.single().sourceFields["resultAgeMs"])
+    }
+
+    @Test
+    fun `I1 - empty cached list emits no delivery and never stops the session`() {
+        val sys = system() // FakeFetcher default: empty cached list
+        val listener = Listener()
+        val result = sys.source.startObservation(WifiSessionCoordinator.wifiDefault(), listener)
+        assertTrue(result is SourceStartResult.Started)
+        assertEquals(1, sys.fetcher.fetchCount) // the read happened
+        assertTrue(listener.events.single() is ObservationEvent.SessionStarted) // nothing else
+        // The receiver stays armed: a later broadcast still delivers normally.
+        (sys.fetcher as FakeFetcher).outcome = WifiFetchOutcome.Results(listOf(record()))
+        sys.fixtureEngine.callback!!.onScanResultsBroadcast(updated = true)
+        assertEquals(2, sys.fetcher.fetchCount)
+        assertTrue(listener.events.filterIsInstance<ObservationEvent.WifiResultsAvailable>().isNotEmpty())
+    }
+
+    @Test
+    fun `I2 - failed cached read is swallowed and the session keeps listening`() {
+        val sys = system(fetcher = FakeFetcher().apply {
+            outcome = WifiFetchOutcome.Failed(
+                ObservationError.PermissionDenied(PermissionId.ACCESS_FINE_LOCATION, false, RadioType.WIFI)) })
+        val listener = Listener()
+        val result = sys.source.startObservation(WifiSessionCoordinator.wifiDefault(), listener)
+        // Cached-read failure is NOT a session error: started, no terminal event.
+        assertTrue(result is SourceStartResult.Started)
+        assertTrue(listener.events.single() is ObservationEvent.SessionStarted)
+        assertEquals(1, sys.fixtureEngine.startCount) // receiver still registered
+        // A later successful broadcast path is untouched.
+        (sys.fetcher as FakeFetcher).outcome = WifiFetchOutcome.Results(listOf(record()))
+        sys.fixtureEngine.callback!!.onScanResultsBroadcast(updated = true)
+        assertTrue(listener.events.filterIsInstance<ObservationEvent.WifiResultsAvailable>().isNotEmpty())
+    }
+
+    @Test
+    fun `I3 - refused starts never read the cache`() {
+        val foregroundOff = system(foreground = { false })
+        foregroundOff.source.startObservation(WifiSessionCoordinator.wifiDefault(), Listener())
+        assertEquals(0, (foregroundOff.fetcher as FakeFetcher).fetchCount)
+        val permissionOff = system(
+            readiness = { blocked(ReadinessBlocker.PermissionMissing(PermissionId.ACCESS_FINE_LOCATION, permanent = false)) })
+        permissionOff.source.startObservation(WifiSessionCoordinator.wifiDefault(), Listener())
+        assertEquals(0, (permissionOff.fetcher as FakeFetcher).fetchCount)
     }
 
     @Test
     fun `false or missing update flag delivers results marked NOT new`() {
         val sys = system(fetcher = FakeFetcher().apply {
-            outcome = WifiFetchOutcome.Results(listOf(record(ageMs = 60_000))) })
+        })
         val listener = Listener()
         sys.source.startObservation(WifiSessionCoordinator.wifiDefault(), listener)
+        sys.fetcher.outcome = WifiFetchOutcome.Results(listOf(record(ageMs = 60_000)))
 
         sys.fixtureEngine.callback!!.onScanResultsBroadcast(updated = false)
 
@@ -214,10 +279,10 @@ class WifiSessionCoordinatorTest {
 
     @Test
     fun `unknown age and boot timestamp travel honestly in source fields`() {
-        val sys = system(fetcher = FakeFetcher().apply {
-            outcome = WifiFetchOutcome.Results(listOf(record(bootTimestampUs = null, ageMs = null))) })
+        val sys = system()
         val listener = Listener()
         sys.source.startObservation(WifiSessionCoordinator.wifiDefault(), listener)
+        sys.fetcher.outcome = WifiFetchOutcome.Results(listOf(record(bootTimestampUs = null, ageMs = null)))
 
         sys.fixtureEngine.callback!!.onScanResultsBroadcast(updated = true)
 
@@ -233,14 +298,14 @@ class WifiSessionCoordinatorTest {
 
     @Test
     fun `malformed empty fields and invalid rssis never crash`() {
-        val sys = system(fetcher = FakeFetcher().apply {
-            outcome = WifiFetchOutcome.Results(listOf(
-                record(bssid = null, ssid = "  ", rssi = null),
-                record(bssid = "zz::malformed", ssid = null, rssi = 999),
-                record(ssid = "\u0000ctrl", bssid = "11:22:33:44:55:66"),
-            )) })
+        val sys = system()
         val listener = Listener()
         sys.source.startObservation(WifiSessionCoordinator.wifiDefault(), listener)
+        sys.fetcher.outcome = WifiFetchOutcome.Results(listOf(
+            record(bssid = null, ssid = "  ", rssi = null),
+            record(bssid = "zz::malformed", ssid = null, rssi = 999),
+            record(ssid = "\u0000ctrl", bssid = "11:22:33:44:55:66"),
+        ))
 
         sys.fixtureEngine.callback!!.onScanResultsBroadcast(updated = true)
 
@@ -252,13 +317,13 @@ class WifiSessionCoordinatorTest {
 
     @Test
     fun `future and negative boot timestamps stay unknown ages`() {
-        val sys = system(fetcher = FakeFetcher().apply {
-            outcome = WifiFetchOutcome.Results(listOf(
-                record(bootTimestampUs = -5, ageMs = null),
-                record(bootTimestampUs = 9_000_000_000_000, ageMs = null),
-            )) })
+        val sys = system()
         val listener = Listener()
         sys.source.startObservation(WifiSessionCoordinator.wifiDefault(), listener)
+        sys.fetcher.outcome = WifiFetchOutcome.Results(listOf(
+            record(bootTimestampUs = -5, ageMs = null),
+            record(bootTimestampUs = 9_000_000_000_000, ageMs = null),
+        ))
 
         sys.fixtureEngine.callback!!.onScanResultsBroadcast(updated = true)
 
@@ -277,9 +342,11 @@ class WifiSessionCoordinatorTest {
         sys.fetcher.outcome = WifiFetchOutcome.Results(listOf(record(ssid = "Second")))
         sys.fixtureEngine.callback!!.onScanResultsBroadcast(updated = true)
 
+        // Initial cached read ("First", NOT new) + two broadcast deliveries.
         val deliveries = listener.events.filterIsInstance<ObservationEvent.WifiResultsAvailable>()
-        assertEquals(2, deliveries.size)
-        assertEquals("Second", deliveries[1].observations.single().displayName)
+        assertEquals(3, deliveries.size)
+        assertFalse(deliveries[0].updatedSinceLastDelivery)
+        assertEquals("Second", deliveries[2].observations.single().displayName)
     }
 
     // ---- 5) fail-closed permission/foreground loss at broadcast ----
@@ -313,7 +380,8 @@ class WifiSessionCoordinatorTest {
 
         assertTrue(listener.events.filterIsInstance<ObservationEvent.SourceFailed>()
             .single().error is ObservationError.RadioDisabled)
-        assertEquals(0, sys.fetcher.fetchCount) // never read after loss
+        // 1 = initial cached read; the readiness-loss broadcast read 0.
+        assertEquals(1, sys.fetcher.fetchCount)
     }
 
     @Test
@@ -327,7 +395,8 @@ class WifiSessionCoordinatorTest {
         sys.fixtureEngine.callback!!.onScanResultsBroadcast(updated = true)
 
         assertEquals(SessionEndReason.FOREGROUND_LOST, (listener.events.last() as ObservationEvent.SessionEnded).reason)
-        assertEquals(0, sys.fetcher.fetchCount)
+        // 1 = the initial cached read at explicit start; the LOSS-time broadcast read 0.
+        assertEquals(1, sys.fetcher.fetchCount)
     }
 
     // ---- 6) cleanup exactly once; late/duplicate broadcasts ----
@@ -343,7 +412,8 @@ class WifiSessionCoordinatorTest {
         sys.fixtureEngine.callback!!.onScanResultsBroadcast(updated = true)
 
         assertEquals(eventsAtEnd, listener.events.size)
-        assertEquals(0, sys.fetcher.fetchCount)
+        // 1 = initial cached read; the late post-cancel broadcast read nothing.
+        assertEquals(1, sys.fetcher.fetchCount)
     }
 
     @Test

@@ -356,3 +356,66 @@ OBSERVING (not IDLE(NOT_ELIGIBLE)); the panel's start_attempt rows show
 outcome=started sourceAccepted=true. 5. If any radio still blocks, screenshot the
 panel — the typed issue+stage will name the guard (now it can only be a genuine
 foreground/permission/radio state, not this wiring defect).
+
+---
+
+# Sixth Field Iteration — Passive Wi-Fi Zero-Result Diagnosis + Cached-Read Fix (2026-10-23)
+
+## Field evidence and verified execution map
+
+Xiaomi, root-cause-fix build: BLE session Observes (20s bounded), two sanitized
+rows, detail works. Wi-Fi session Observes for the 30s window with ZERO entries.
+Code map (verified): WifiSessionCoordinator.startObservation gates
+(already-active -> foreground -> readiness) then registers the session-scoped
+receiver (AndroidWifiResultEngine, RECEIVER_NOT_EXPORTED, system
+SCAN_RESULTS_AVAILABLE_ACTION only) and schedules the 30s timeout. BEFORE this
+iteration the fetcher (WifiManager.getScanResults, never startScan) was read
+ONLY inside onScanResultsBroadcast. Zero results were therefore EXPECTED
+whenever no system/other-app scan broadcast arrives within 30s — which is the
+common case when the user has just opened the app (throttled system scans may
+simply not occur). Observing means "receiver registered", truthfully; it never
+guaranteed a scan or results. NOT proven by the phone evidence: cache contents,
+permission state at the exact call, or OEM broadcast behavior.
+
+## Fix (proven gap, API-29+ documented behavior)
+
+On an explicit, fully gated Start the coordinator now performs ONE guarded
+cached-result read (getScanResults via the existing fetcher; the class still has
+NO scan API and never calls startScan/WifiScanner). Non-empty cached rows are
+delivered with updatedSinceLastDelivery=false and honest per-record age —
+cached data is never presented as newly detected. An empty cache or a failed
+cached read NEVER stops the session: the receiver stays armed for later
+broadcasts. All gates are unchanged; the read happens only inside an explicit
+user-initiated start (no resume/recreation/composition path).
+
+## DEBUG-only Wi-Fi evidence (no adb needed, no identifiers)
+
+Existing FieldDiagnostics rows now include wifi_evidence: fetch (raw cached
+count, allowlisted exception class only), broadcast (platform results-updated
+flag), receiver registration. These make the next phone check decisive: cache
+empty vs rows dropped vs exception. Bounded, in-RAM, DEBUG builds only.
+
+## Regression tests (core JVM)
+
+New: I0 (initial cached read delivers once, NOT-new, honest age + provenance
+fields), I1 (empty cache: no delivery, session keeps listening; later broadcast
+delivers), I2 (failed cached read swallowed; receiver stays; broadcast path
+intact), I3 (refused starts never read the cache). Updated for the intentional
+behavior change: broadcast-fetch counts (1 initial read) and delivery counts in
+the existing freshness/dedup/late-broadcast tests. Gates: core 241/241 (237+4),
+app 4/4, compile OK, assembleDebug OK, lintDebug 0 errors/15 warnings.
+
+## APK identity
+
+com.hjinlabs.radioobserver, versionCode 1, versionName 0.1.0-phase1 (unchanged).
+Size 23526952 bytes; SHA-256 a8902566fdf147459a989ef0901203a5dadeb8d82c229113cf829d22ba889436.
+"wifi_evidence" and "FieldDiag-04" confirmed in the DEX.
+
+## Phone retest
+
+Install this APK; Wi-Fi + Location ON; explicit Wi-Fi Start. Expected: cached
+results (if any exist on the device) appear immediately, labeled not-new with
+their age; if none appear, open Tanılama: wifi_evidence rows show the RAW cached
+count (0 = device cache genuinely empty at that moment, expected when nobody
+scanned; exception = a different, now-visible cause). A successful listening
+session with zero results remains possible and is NOT a failed start.

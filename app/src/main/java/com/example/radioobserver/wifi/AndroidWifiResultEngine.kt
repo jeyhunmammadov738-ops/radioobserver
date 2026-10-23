@@ -14,6 +14,7 @@ import com.example.radioobserver.core.radio.boundary.WifiEngineStartOutcome
 import com.example.radioobserver.core.radio.boundary.WifiResultEngine
 import com.example.radioobserver.core.radio.boundary.WifiResultEngineCallback
 import com.example.radioobserver.core.radio.model.RadioType
+import com.example.radioobserver.diag.FieldDiagnostics
 import java.util.concurrent.Executor
 
 /**
@@ -47,6 +48,9 @@ class AndroidWifiResultEngine(
                 // Action guard: ignore anything that is not the expected system broadcast.
                 if (intent.action != WifiManager.SCAN_RESULTS_AVAILABLE_ACTION) return
                 val updated = intent.getBooleanExtra(WifiManager.EXTRA_RESULTS_UPDATED, false)
+                // DEBUG-only evidence: broadcast arrival + platform update flag.
+                FieldDiagnostics.log("wifi_evidence", "kind" to "broadcast",
+                    "resultsUpdated" to updated)
                 executor.execute { callback.onScanResultsBroadcast(updated) }
             }
         }
@@ -60,6 +64,7 @@ class AndroidWifiResultEngine(
             )
             started = true
             this.receiver = receiver
+            FieldDiagnostics.log("wifi_evidence", "kind" to "receiver", "registered" to true)
             WifiEngineStartOutcome.Started
         } catch (security: SecurityException) {
             WifiEngineStartOutcome.Failed(

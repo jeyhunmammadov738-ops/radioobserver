@@ -9,6 +9,7 @@ import com.example.radioobserver.core.radio.boundary.WifiFetchOutcome
 import com.example.radioobserver.core.radio.boundary.WifiResultFetcher
 import com.example.radioobserver.core.radio.model.RadioType
 import com.example.radioobserver.core.radio.permissions.PermissionId
+import com.example.radioobserver.diag.FieldDiagnostics
 
 /**
  * Reads ONLY the system-cached scan results via [WifiManager.getScanResults] (task 2.4).
@@ -27,9 +28,14 @@ class AndroidWifiResultFetcher(
             manager.getScanResults()
         } catch (security: SecurityException) {
             // Actual runtime permission loss: fail closed with a typed error, never crash.
+            // DEBUG-only evidence (no identifiers, allowlisted class name only).
+            FieldDiagnostics.log("wifi_evidence", "kind" to "fetch",
+                "outcome" to "security_exception")
             return WifiFetchOutcome.Failed(
                 ObservationError.PermissionDenied(PermissionId.ACCESS_FINE_LOCATION, permanent = false, radio = RadioType.WIFI))
         } catch (unexpected: RuntimeException) {
+            FieldDiagnostics.log("wifi_evidence", "kind" to "fetch",
+                "outcome" to "runtime_exception")
             return WifiFetchOutcome.Failed(
                 ObservationError.ScanStartFailed(ScanFailureReason.INTERNAL_ERROR, null, RadioType.WIFI))
         }
@@ -45,6 +51,9 @@ class AndroidWifiResultFetcher(
                 ageMs = computeAgeMs(bootTimestampUs, nowUs),
             )
         }
+        // DEBUG-only evidence: RAW cached count only (no SSID/BSSID/MAC anywhere).
+        FieldDiagnostics.log("wifi_evidence", "kind" to "fetch",
+            "rawCount" to records.size, "outcome" to "results")
         return WifiFetchOutcome.Results(records)
     }
 

@@ -132,6 +132,19 @@ class WifiSessionCoordinator(
         activeStore = ObservationStore()
         timeoutTask = scheduler.schedule(spec.maxDurationMs) { stopInternal(SessionEndReason.DURATION_ELAPSED) }
         listener.onObservationEvent(ObservationEvent.SessionStarted(handle.sessionId))
+        // Initial cached-result read (2026-10-23, sixth field iteration): on an explicit,
+        // fully gated Start the platform cache may ALREADY hold the most recent scan
+        // results (API 29+: getScanResults() exposes cached results WITHOUT triggering
+        // a scan; this class still has no scan API). ONE guarded read only; cached rows
+        // are delivered with updatedSinceLastDelivery=false and honest per-record age —
+        // never presented as newly detected. An empty cache or a failed read NEVER
+        // stops the session: the receiver stays armed for later broadcasts.
+        when (val cached = fetcher.fetch()) {
+            is WifiFetchOutcome.Results -> if (cached.records.isNotEmpty()) {
+                deliver(listener, cached.records, updated = false)
+            }
+            is WifiFetchOutcome.Failed -> Unit // cached-read failure is not a session error
+        }
         return SourceStartResult.Started(handle)
     }
 
