@@ -238,6 +238,19 @@ docs/field-test-start-permission-2026-10-23.md. The underlying tap-time trigger
 remains unproven from filtered logs; diagnostics will settle it. Checkboxes
 still NOT reopened.
 
+Third field iteration (2026-10-23 evening): the 15:12 Xiaomi retest still showed
+both cards IDLE with the red start-failed hint; the system log contains no
+package-replacement event, so which APK was actually installed is unestablished.
+A third full source audit found no reproducible divergence: both eligibility
+flags are live reads updated in the same supervisor methods, in the same order.
+Decision per field protocol: DEBUG-only on-screen FieldDiag-03 diagnostics panel
+(collapsed "Tanılama" disclosure, bounded in-RAM chronology, live typed booleans,
+no ADB needed) so the next retest yields decisive in-app evidence and proves the
+installed build identity. 3 new app-layer JVM tests (core 231/231 unchanged).
+Fresh gates: app 3/3, compile/assemble OK, lint 0 errors/15 warnings. Details:
+docs/field-test-start-permission-2026-10-23.md (third section). On-device
+mechanism remains UNVERIFIED pending the panel retest.
+
 ## Phase 3 — Friendly Compose UI & Live Observation State (COMPLETE: 10/10 done)
 
 Detailed proposal: `docs/phase3-proposal.md`. Developer authorization (2026-10-20): the
