@@ -157,3 +157,60 @@ hidden state, seven-tap DEBUG unlock: all untouched.
 3. Gözlem at 2.0x / narrow: Başlat/Durdur wrap to separate lines, nothing clipped.
 4. Ayarlar scrolls fully at 2.0x; bottom bar never covers content.
 5. FieldDiag-04: cold start hidden; seven version taps; show/hide works.
+
+## Micro-polish addendum (2026-10-23, developer-approved)
+
+Three presentation-only fixes from the latest Xiaomi screenshots.
+
+### A. Saved-history row density (HistoryRecordRow)
+Diagnosis: the card stacked TWO bands — header (icon+name+meta) and a full-width
+48dp actions row — so every card paid header height PLUS a dedicated action band.
+Fix: the meta line (source · date) now shares ONE FlowRow band with the Ayrıntılar/
+Sil buttons; the meta wraps when narrow (weight, fill=false), the buttons flow to the
+next line only when the width genuinely runs out, and both keep their enforced
+heightIn(min = 48.dp) targets with slimmed contentPadding. The residual action height
+is the 48dp accessibility minimum itself — deliberate, not wasted. Card tap still
+does nothing; filters, sort, single-delete, Clear All and stored data unchanged.
+
+### B. BLE unknown-manufacturer localization
+Diagnosis: the core BLE classifier emits the honest English sentinel
+"Unknown manufacturer (id 0x038F)"; the previous iteration only localized the Wi-Fi
+sentinels. Fix: ManufacturerPresentation gained pure, exact-match parsing of that
+sentinel (bleUnknownManufacturerId) plus formatBleCompanyId. The live detail AND the
+history detail now render "Üretici belirlenemedi" with the separate, honest context
+line "Üretici kodu: 0x038F" (a code NEVER identifies a vendor). Verified hints
+(Apple Inc., Samsung...) pass through unchanged; the classifier, its models, its
+tests and the previously fixed Wi-Fi fallbacks are untouched; no MAC/BSSID ever shown.
+
+### C. Redundant labels/caveats removed
+- Live detail "Son görülme" / "Son görülme: 20:45:23" → label "Son görülme", value
+  bare authoritative clock time via the pure DetailTime.plainClockText (feed ROWS keep
+  their own label since the row has no other caption). Timestamp semantics unchanged.
+- History detail: the coarse-signal-not-distance warning now appears ONCE (in the
+  signal card, together with the distinct recorded-time caveat); the hints card keeps
+  only its distinct privacy note. Distinct meanings preserved; duplicate text gone.
+
+### Test evidence (final tree; all exit 0)
+- :core:radio:test --rerun-tasks --no-daemon → 266/266.
+- :app:testDebugUnitTest --rerun-tasks --no-daemon → 45/45: previous 39 plus NEW
+  ManufacturerBleSentinelTest (4: sentinel→id, known hints untouched, null/empty/
+  malformed/Wi-Fi separation, id formatting) and DetailTimeTest (2: no duplicated
+  label prefix, stable clock shape with locale restore). One test-run lesson: the
+  locale-shape test initially leaked a Turkish default locale into the sibling
+  diagnostics-ring test (decimal separator); fixed by restoring the original locale.
+- :app:compileDebugKotlin, :app:assembleDebug (DEBUG only) → success.
+- :app:lintDebug --rerun-tasks --no-daemon → 0 errors / 15 warnings.
+- Debug APK: com.hjinlabs.radioobserver, versionCode 1, versionName 0.1.0-phase1,
+  23,712,194 bytes, SHA-256
+  7c96c3aa6931f5cd51230bdd33716604dd9f998310046b9217cafdb4d6dcafba.
+- Not certifiable without a device: actual 2.0x reflow, touch geometry, TalkBack.
+
+### Xiaomi manual retest checklist (install OVER the existing app — do NOT uninstall
+or clear data; that would delete the persisted local history)
+1. Geçmiş rows noticeably shorter; meta and buttons share one band; nothing clipped
+   at 2.0x; Ayrıntılar/Sil easy to hit; a card tap still never deletes.
+2. BLE live detail: "Üretici belirlenemedi" + "Üretici kodu: 0x038F" (when applicable);
+   known vendors unchanged; Wi-Fi locally-administered explanation unchanged.
+3. Live detail "Son görülme" value shows only the time, once.
+4. History detail: signal warning appears once (signal card), privacy note once.
+5. FieldDiag-04: cold start hidden; seven version taps; show/hide works.

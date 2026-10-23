@@ -205,6 +205,7 @@ private fun HistoryNoticeCard(text: String, onDismiss: () -> Unit) {
  * clear two-action footer. Deleting requires the EXPLICIT Sil button (48dp) — a row
  * tap can never delete; Ayrıntılar opens the SAME sanitized detail path.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun HistoryRecordRow(
     record: HistoryRecord,
@@ -214,10 +215,13 @@ private fun HistoryRecordRow(
     val safeName = record.displayName ?: stringResource(R.string.history_unnamed)
     val detailA11y = stringResource(R.string.history_open_detail_a11y, safeName)
     val deleteA11y = stringResource(R.string.history_delete_one_a11y, safeName)
-    // FINAL POLISH compaction: the Xiaomi screenshots showed tall, mostly-empty
-    // cards. Tightened rhythm (4/8dp scale): 8dp card padding, 4dp section gap,
-    // slimmed action buttons (contentPadding) that still keep their 48dp targets.
-    // A card tap still does NOTHING — only the explicit, labeled buttons act.
+    // MICRO-POLISH density: the previous card stacked TWO bands (header, then a
+    // full-width 48dp actions row) — the main source of the remaining empty space.
+    // Now the meta line (source · date) shares ONE band with the actions: the meta
+    // takes the remaining width (wrapping over multiple lines at 2.0x), and the two
+    // explicit buttons keep their enforced 48dp targets with slimmed contentPadding.
+    // The 48dp accessibility minimum itself cannot shrink — that residual height is
+    // deliberate, not wasted. A card tap still does NOTHING.
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
@@ -228,25 +232,31 @@ private fun HistoryRecordRow(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 SourceIcon(radio = record.radio)
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        text = safeName,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = stringResource(
-                            R.string.history_row_line,
-                            radioLabel(record.radio),
-                            formatTime(record.savedAtEpochMs),
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                Text(
+                    text = safeName,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+            ) {
+                Text(
+                    text = stringResource(
+                        R.string.history_row_line,
+                        radioLabel(record.radio),
+                        formatTime(record.savedAtEpochMs),
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    // Wraps (never clips) long meta at 320dp/2.0x; the buttons flow
+                    // to the next line only when the width genuinely runs out.
+                    modifier = Modifier.weight(1f, fill = false),
+                )
                 TextButton(
                     onClick = onOpenDetail,
                     modifier = Modifier
@@ -367,26 +377,45 @@ fun HistoryDetailScreen(
                         // boundary; real OUI hints pass through unchanged. The locally
                         // administered sentinel additionally shows the honest Turkish
                         // explanation. Never a BSSID, never an invented vendor.
-                        if (ManufacturerPresentation.isKnownFallback(hint)) {
-                            CompactInfoRow(
-                                stringResource(R.string.history_detail_manufacturer),
-                                stringResource(R.string.manufacturer_unavailable),
-                            )
-                            if (ManufacturerPresentation.isLocallyAdministeredFallback(hint)) {
+                        val bleUnknownId = ManufacturerPresentation.bleUnknownManufacturerId(hint)
+                        when {
+                            ManufacturerPresentation.isKnownFallback(hint) -> {
+                                CompactInfoRow(
+                                    stringResource(R.string.history_detail_manufacturer),
+                                    stringResource(R.string.manufacturer_unavailable),
+                                )
+                                if (ManufacturerPresentation.isLocallyAdministeredFallback(hint)) {
+                                    Text(
+                                        text = stringResource(R.string.manufacturer_local_address_explanation),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                            // BLE sentinel: honest Turkish + the raw company id as
+                            // SEPARATE context; the code never identifies a vendor.
+                            bleUnknownId != null -> {
+                                CompactInfoRow(
+                                    stringResource(R.string.history_detail_manufacturer),
+                                    stringResource(R.string.manufacturer_unavailable),
+                                )
                                 Text(
-                                    text = stringResource(R.string.manufacturer_local_address_explanation),
+                                    text = stringResource(
+                                        R.string.manufacturer_code_format,
+                                        ManufacturerPresentation.formatBleCompanyId(bleUnknownId)),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
-                        } else {
-                            CompactInfoRow(stringResource(R.string.history_detail_manufacturer), hint)
+                            else -> CompactInfoRow(stringResource(R.string.history_detail_manufacturer), hint)
                         }
                     }
                     record.typeHint?.let {
                         CompactInfoRow(stringResource(R.string.history_detail_type), it)
                     }
-                    Text(stringResource(R.string.signal_qualitative_note), style = MaterialTheme.typography.bodySmall)
+                    // MICRO-POLISH: the coarse-signal caveat lives ONCE, in the
+                    // signal card above; this card keeps only its DISTINCT warnings
+                    // (recorded-time semantics is in the signal card, privacy here).
                     Text(stringResource(R.string.history_privacy_note), style = MaterialTheme.typography.bodySmall)
                 }
             }

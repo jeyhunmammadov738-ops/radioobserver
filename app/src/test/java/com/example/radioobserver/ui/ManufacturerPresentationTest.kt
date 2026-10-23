@@ -1,7 +1,9 @@
 package com.example.radioobserver.ui
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
@@ -36,5 +38,45 @@ class ManufacturerPresentationTest {
         assertFalse(ManufacturerPresentation.isLocallyAdministeredFallback("Intel"))
         assertFalse(ManufacturerPresentation.isKnownFallback("Unknown vendorry")) // no prefix sloppiness
         assertFalse(ManufacturerPresentation.isKnownFallback("unknown vendor")) // case-sensitive by contract
+    }
+}
+
+class ManufacturerBleSentinelTest {
+
+    @Test
+    fun `BLE unknown-manufacturer sentinel yields the honest company id`() {
+        assertEquals(0x038F, ManufacturerPresentation.bleUnknownManufacturerId("Unknown manufacturer (id 0x038F)"))
+        assertEquals(0x004C, ManufacturerPresentation.bleUnknownManufacturerId("Unknown manufacturer (id 0x004C)"))
+        // Case-insensitive hex, exact-match only, surrounding whitespace tolerated.
+        assertEquals(911, ManufacturerPresentation.bleUnknownManufacturerId("  Unknown manufacturer (id 0x038f) "))
+    }
+
+    @Test
+    fun `known manufacturer hints are NEVER treated as BLE sentinels`() {
+        assertNull(ManufacturerPresentation.bleUnknownManufacturerId("Apple Inc."))
+        assertNull(ManufacturerPresentation.bleUnknownManufacturerId("Samsung Electronics Co., Ltd."))
+        assertFalse(ManufacturerPresentation.isLocalizedFallback("Apple Inc."))
+        assertTrue(ManufacturerPresentation.isKnownManufacturerHint("Apple Inc."))
+    }
+
+    @Test
+    fun `null, empty, malformed and Wi-Fi sentinels are not BLE sentinels`() {
+        assertNull(ManufacturerPresentation.bleUnknownManufacturerId(null))
+        assertNull(ManufacturerPresentation.bleUnknownManufacturerId(""))
+        assertNull(ManufacturerPresentation.bleUnknownManufacturerId("Unknown manufacturer"))
+        assertNull(ManufacturerPresentation.bleUnknownManufacturerId("Unknown manufacturer (id )"))
+        assertNull(ManufacturerPresentation.bleUnknownManufacturerId("Unknown manufacturer (id 0xGGGG)"))
+        assertNull(ManufacturerPresentation.bleUnknownManufacturerId("Unknown vendor (locally administered BSSID)"))
+        assertNull(ManufacturerPresentation.bleUnknownManufacturerId("Unknown vendor"))
+        // The previously fixed Wi-Fi fallbacks keep working unchanged.
+        assertTrue(ManufacturerPresentation.isKnownFallback("Unknown vendor (locally administered BSSID)"))
+        assertTrue(ManufacturerPresentation.isKnownFallback("Unknown vendor"))
+    }
+
+    @Test
+    fun `company id is displayed honestly as uppercase 0x-prefixed code`() {
+        assertEquals("0x038F", ManufacturerPresentation.formatBleCompanyId(0x038F))
+        assertEquals("0x004C", ManufacturerPresentation.formatBleCompanyId(76))
+        assertEquals("0xFFFF", ManufacturerPresentation.formatBleCompanyId(0xFFFF))
     }
 }

@@ -51,6 +51,7 @@
     <!-- Final polish (2026-10-23): dogal Turkce teknik metinler -->
     <string name="manufacturer_unavailable">Üretici belirlenemedi</string>
     <string name="manufacturer_local_address_explanation">Yerel olarak atanmış Wi-Fi adresinden güvenilir üretici bilgisi çıkarılamıyor.</string>
+    <string name="manufacturer_code_format">Üretici kodu: %1$s</string>
     <string name="history_signal_record_note">Sinyal kategorisi kayıt anındaki durumu yansıtır; cihazın şu anda yakın olduğunun kanıtı değildir.</string>
     <string name="history_delete_one_a11y">%1$s kaydını sil</string>
     <string name="history_open_detail_a11y">%1$s kaydının ayrıntılarını aç</string>

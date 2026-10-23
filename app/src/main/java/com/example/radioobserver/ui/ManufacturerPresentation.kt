@@ -35,5 +35,30 @@ object ManufacturerPresentation {
      * for sentinels, the original hint otherwise. The Turkish text itself comes from
      * resources in the composable layer — this function only decides WHICH path.
      */
-    fun isLocalizedFallback(hint: String?): Boolean = isKnownFallback(hint)
+    fun isLocalizedFallback(hint: String?): Boolean =
+        isKnownFallback(hint) || bleUnknownManufacturerId(hint) != null
+
+    /**
+     * MICRO-POLISH (2026-10-23): the core BLE classifier emits the honest English
+     * sentinel "Unknown manufacturer (id 0x038F)" for company ids outside the Phase 1
+     * lookup table. Presentation-only parsing (the classifier itself is untouched and
+     * its tests keep asserting the English sentinel): returns the company id when the
+     * hint is EXACTLY that sentinel, null otherwise. A code NEVER identifies a
+     * manufacturer; the UI shows it only as separate optional context.
+     */
+    fun bleUnknownManufacturerId(hint: String?): Int? {
+        if (hint == null) return null
+        val m = BLE_UNKNOWN.matchEntire(hint.trim()) ?: return null
+        return m.groupValues[1].toIntOrNull(16)
+    }
+
+    /** Known, VERIFIED manufacturer hints (Apple/Samsung...) are never touched. */
+    fun isKnownManufacturerHint(hint: String?): Boolean =
+        hint != null && !isLocalizedFallback(hint)
+
+    /** Honest display of the raw company id: uppercase, 0x-prefixed, as the classifier formats it. */
+    fun formatBleCompanyId(companyId: Int): String = "0x%04X".format(companyId)
+
+    private val BLE_UNKNOWN =
+        Regex("Unknown manufacturer \\(id 0x([0-9A-Fa-f]{1,4})\\)$")
 }

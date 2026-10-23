@@ -41,6 +41,7 @@ import com.example.radioobserver.core.radio.ui.ObservationFeedProjection.FeedFil
 import com.example.radioobserver.core.radio.ui.ObservationRowUi
 import com.example.radioobserver.core.radio.ui.ObservationUiState
 import com.example.radioobserver.ui.components.CompactInfoRow
+import com.example.radioobserver.ui.DetailTime
 import com.example.radioobserver.ui.ManufacturerPresentation
 import com.example.radioobserver.ui.components.EmptyState
 import com.example.radioobserver.ui.components.PillStyle
@@ -48,9 +49,6 @@ import com.example.radioobserver.ui.components.SectionHeader
 import com.example.radioobserver.ui.components.SourceIcon
 import com.example.radioobserver.ui.components.Spacing
 import com.example.radioobserver.ui.components.StatusPill
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 /**
  * PREMIUM UI/UX V2 Gözlemler feed + live detail (post-roadmap, 2026-10-23).
@@ -271,7 +269,9 @@ private fun DetailContent(row: ObservationRowUi) {
             }
             SectionHeader(stringResource(R.string.detail_section_source_time))
             CompactInfoRow(stringResource(R.string.detail_field_source), radioWord(row.radio))
-            CompactInfoRow(stringResource(R.string.detail_field_last_seen), lastSeenText(row.lastSeenAtEpochMs))
+            // MICRO-POLISH: the label already says "Son görülme"; the VALUE is now
+            // the bare authoritative clock time (no duplicated prefix).
+            CompactInfoRow(stringResource(R.string.detail_field_last_seen), timeText(row.lastSeenAtEpochMs))
             CompactInfoRow(stringResource(R.string.detail_field_row_label), row.rowId)
         }
     }
@@ -286,19 +286,42 @@ private fun DetailContent(row: ObservationRowUi) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(Spacing.lg), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             SectionHeader(stringResource(R.string.detail_section_hints))
-            // Classifier English sentinels are localized at the presentation boundary
-            // (ManufacturerPresentation); real OUI hints pass through unchanged.
-            CompactInfoRow(
-                stringResource(R.string.detail_field_manufacturer),
-                if (ManufacturerPresentation.isKnownFallback(row.manufacturerHint))
-                    stringResource(R.string.manufacturer_unavailable)
-                else row.manufacturerHint ?: unknown)
-            if (row.radio == RadioType.WIFI && row.locallyAdministered) {
-                Text(
-                    text = stringResource(R.string.manufacturer_local_address_explanation),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            // Classifier English sentinels (Wi-Fi vendor + BLE unknown-manufacturer)
+            // are localized at the presentation boundary (ManufacturerPresentation);
+            // real, verified OUI/company hints pass through unchanged.
+            val bleUnknownId = ManufacturerPresentation.bleUnknownManufacturerId(row.manufacturerHint)
+            when {
+                ManufacturerPresentation.isKnownFallback(row.manufacturerHint) -> {
+                    CompactInfoRow(
+                        stringResource(R.string.detail_field_manufacturer),
+                        stringResource(R.string.manufacturer_unavailable),
+                    )
+                    if (row.radio == RadioType.WIFI && row.locallyAdministered) {
+                        Text(
+                            text = stringResource(R.string.manufacturer_local_address_explanation),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                // BLE sentinel: honest Turkish + the raw company id as SEPARATE
+                // context. The code never identifies a vendor.
+                bleUnknownId != null -> {
+                    CompactInfoRow(
+                        stringResource(R.string.detail_field_manufacturer),
+                        stringResource(R.string.manufacturer_unavailable),
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.manufacturer_code_format,
+                            ManufacturerPresentation.formatBleCompanyId(bleUnknownId)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                else -> CompactInfoRow(
+                    stringResource(R.string.detail_field_manufacturer),
+                    row.manufacturerHint ?: unknown)
             }
             CompactInfoRow(stringResource(R.string.detail_field_type), row.typeHint ?: unknown)
             CompactInfoRow(
@@ -358,8 +381,10 @@ private fun signalWord(bucket: SignalBucket): String = stringResource(
 
 @Composable
 private fun lastSeenText(epochMs: Long): String {
-    // The epoch value comes from the sanitized pipeline (authoritative); we never
-    // invent a time when the field is absent.
-    val formatted = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(epochMs))
-    return stringResource(R.string.last_seen_format, formatted)
+    // Feed rows carry their own label ("Son görülme: HH:mm:ss") because the pill
+    // column has no other caption. The pipeline epoch value is authoritative.
+    return stringResource(R.string.last_seen_format, DetailTime.plainClockText(epochMs))
 }
+
+@Composable
+private fun timeText(epochMs: Long): String = DetailTime.plainClockText(epochMs)

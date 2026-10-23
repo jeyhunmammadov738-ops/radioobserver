@@ -354,7 +354,17 @@ belirlenemedi" + locally-administered explanation; real OUI hints unchanged; cor
 classifier untouched) and recorded-time signal semantics on the history detail.
 (3) Adaptive FlowRow Start/Stop for 320dp/2.0x. No behavior/permission/manifest
 change. Core 266/266, app 39/39, lint 0 errors/15 warnings. DEBUG APK only. Phone
-retest required. Details: docs/field-test-start-permission-2026-10-23.md (fifth
+retest required.
+
+POST-ROADMAP MICRO-POLISH (2026-10-23): (A) history rows: meta + Ayrıntılar/Sil
+merged into one FlowRow band (48dp targets kept; card tap never deletes). (B) BLE
+"Unknown manufacturer (id 0xNNNN)" sentinel localized at the presentation boundary
+(Üretici belirlenemedi + separate Üretici kodu context; verified hints unchanged;
+core classifier untouched). (C) live-detail last-seen label/value duplication removed
+(pure DetailTime) and duplicated signal caveat deduplicated (distinct recorded-time
+and privacy warnings preserved). New tests: ManufacturerBleSentinelTest (4),
+DetailTimeTest (2). Core 266/266, app 45/45, lint 0 errors/15 warnings. DEBUG APK
+only. Phone retest required. Details: docs/field-test-start-permission-2026-10-23.md (fifth
 section).
 
 ## Phase 3 — Friendly Compose UI & Live Observation State (COMPLETE: 10/10 done)
