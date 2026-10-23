@@ -75,8 +75,20 @@ class ObservationSessionOrchestrator(
     sealed interface StartAttempt {
         data class Started(val radio: RadioType) : StartAttempt
         data class NeedsRuntimePermission(val radio: RadioType) : StartAttempt
-        data class Blocked(val radio: RadioType, val issue: SessionIssueKey) : StartAttempt
+
+        /**
+         * Field iteration 4 (2026-10-23): the typed issue PLUS the decision stage that
+         * produced it, so diagnostics can name the EXACT guard. UI semantics unchanged.
+         */
+        data class Blocked(
+            val radio: RadioType,
+            val issue: SessionIssueKey,
+            val stage: StartStage = StartStage.ORCHESTRATOR_GATE,
+        ) : StartAttempt
     }
+
+    /** Where a Blocked decision was made: the orchestrator gate or the source refusal. */
+    enum class StartStage { ORCHESTRATOR_GATE, SOURCE_REFUSAL }
 
     companion object {
         /** Existing Phase 2 defaults, re-declared for the production call path. */
@@ -147,14 +159,16 @@ class ObservationSessionOrchestrator(
                 // never be rendered as a stopped/unavailable session either.
                 if (result.error is ObservationError.ForegroundIneligible) {
                     publishNotEligibleIfIdle(radio, session)
-                    return StartAttempt.Blocked(radio, SessionIssueKey.NOT_ELIGIBLE)
+                    return StartAttempt.Blocked(radio, SessionIssueKey.NOT_ELIGIBLE,
+                        StartStage.SOURCE_REFUSAL)
                 }
                 val (status, issue) = mapRefusal(result.error)
                 publish(withStatus(radio, status, issue))
                 if (status == RadioSessionUiStatus.PERMISSION_REQUIRED) {
                     StartAttempt.NeedsRuntimePermission(radio)
                 } else {
-                    StartAttempt.Blocked(radio, issue ?: SessionIssueKey.INTERNAL_ERROR)
+                    StartAttempt.Blocked(radio, issue ?: SessionIssueKey.INTERNAL_ERROR,
+                        StartStage.SOURCE_REFUSAL)
                 }
             }
         }

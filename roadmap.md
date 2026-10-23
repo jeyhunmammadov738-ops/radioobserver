@@ -251,6 +251,21 @@ Fresh gates: app 3/3, compile/assemble OK, lint 0 errors/15 warnings. Details:
 docs/field-test-start-permission-2026-10-23.md (third section). On-device
 mechanism remains UNVERIFIED pending the panel retest.
 
+Fourth field iteration (2026-10-23, night): the first DECISIVE in-app evidence
+arrived via the FieldDiag-03 panel — both Start taps reached the app with all
+tap-time facts true (eligible, grants, Ready) yet both attempts returned Blocked
+while sessions stayed IDLE. A fourth full audit enumerated every Blocked producer;
+the trace cannot name the failing guard because the FieldDiag-03 start_attempt row
+omitted the typed issue/stage, so no behavioral fix was applied (no proven defect;
+stale-hint workaround NOT repeated). FieldDiag-04 added: typed decision stage
+(ORCHESTRATOR_GATE vs SOURCE_REFUSAL) on StartAttempt.Blocked, typed issue + stage
++ sourceCalled/accepted in the start_attempt rows, anonymous per-radio attempt
+numbers, activity_recreated timeline marker, 40-row ring with strictly increasing
+sequence IDs and seconds-based monotonic elapsed. 3 new orchestrator stage tests
+(core 234/234) and updated ring tests (app 4/4); compile/assemble OK; lint 0
+errors/15 warnings. Details: docs/field-test-start-permission-2026-10-23.md
+(fourth section). Root cause remains UNPROVEN pending the FieldDiag-04 retest.
+
 ## Phase 3 — Friendly Compose UI & Live Observation State (COMPLETE: 10/10 done)
 
 Detailed proposal: `docs/phase3-proposal.md`. Developer authorization (2026-10-20): the

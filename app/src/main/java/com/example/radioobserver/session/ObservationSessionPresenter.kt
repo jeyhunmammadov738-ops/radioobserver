@@ -39,6 +39,14 @@ class ObservationSessionPresenter(
     private val bleProbe: AndroidBleCapabilityProbe,
     private val wifiProbe: AndroidWifiCapabilityProbe,
 ) {
+    // Field iteration 4 (2026-10-23): anonymous per-radio explicit-Start attempt
+    // counters for the DEBUG diagnostics only (no identity, no persistence).
+    private var bleAttemptCount = 0
+    private var wifiAttemptCount = 0
+
+    private fun nextAttemptNo(radio: RadioType): Int =
+        if (radio == RadioType.BLE) ++bleAttemptCount else ++wifiAttemptCount
+
 
     /** Future 3.5 entry point: the user explicitly tapped the Turkish BLE Start button. */
     fun onUserStartBleTap() = onUserStartTap(RadioType.BLE)
@@ -99,7 +107,8 @@ class ObservationSessionPresenter(
         val missingRuntime = !grants.fineLocation ||
             (radio == RadioType.BLE && !grants.bluetoothScan)
         if (missingRuntime) {
-            FieldDiagnostics.log("start_tap_permission_path", "radio" to radio)
+            FieldDiagnostics.log("start_tap_permission_path",
+                "radio" to radio, "attemptNo" to nextAttemptNo(radio))
             permissionFlowController.onUserStartTap(
                 if (radio == RadioType.BLE) PermissionFlowScope.BLE else PermissionFlowScope.WIFI)
             return
@@ -119,7 +128,8 @@ class ObservationSessionPresenter(
         // DEBUG-only, typed, identifier-free breadcrumb (field diagnostics, 2026-10-23).
         FieldDiagnostics.log(
             "start_tap",
-            "radio" to radio, "eligible" to authorization.foregroundEligible,
+            "radio" to radio, "attemptNo" to nextAttemptNo(radio),
+            "eligible" to authorization.foregroundEligible,
             "fineLocation" to grants.fineLocation,
             "coarseLocation" to grants.coarseLocation,
             "btScan" to grants.bluetoothScan,
@@ -129,8 +139,25 @@ class ObservationSessionPresenter(
             RadioType.BLE -> orchestrator.startBleSession(authorization)
             RadioType.WIFI -> orchestrator.startWifiObservation(authorization)
         }
-        FieldDiagnostics.log("start_attempt", "radio" to radio,
-            "outcome" to attempt::class.simpleName)
+        // Field iteration 4: the DECISIVE typed provenance — the exact issue and
+        // WHICH stage produced it (orchestrator gate vs source refusal). Never a
+        // guessed reason: the values come from the actual decision object.
+        when (attempt) {
+            is ObservationSessionOrchestrator.StartAttempt.Started ->
+                FieldDiagnostics.log("start_attempt", "radio" to radio,
+                    "outcome" to "started", "sourceCalled" to true,
+                    "sourceAccepted" to true)
+            is ObservationSessionOrchestrator.StartAttempt.NeedsRuntimePermission ->
+                FieldDiagnostics.log("start_attempt", "radio" to radio,
+                    "outcome" to "needs_runtime_permission", "sourceCalled" to false)
+            is ObservationSessionOrchestrator.StartAttempt.Blocked ->
+                FieldDiagnostics.log("start_attempt", "radio" to radio,
+                    "outcome" to "blocked", "issue" to attempt.issue,
+                    "stage" to attempt.stage, "sourceCalled" to
+                        (attempt.stage ==
+                            ObservationSessionOrchestrator.StartStage.SOURCE_REFUSAL),
+                    "sourceAccepted" to false)
+        }
     }
 
     private fun blockerIssue(blockers: Set<ReadinessBlocker>): SessionIssueKey? {

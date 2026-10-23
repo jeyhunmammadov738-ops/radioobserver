@@ -112,11 +112,46 @@ class ObservationSessionOrchestratorTest {
         supervisor.onHostResumed() // gate passes, but the source re-gate refuses
         ble.configuredRefusal = ObservationError.ForegroundIneligible(RadioType.BLE)
         val attempt = orch.startBleSession(fullAuth)
+        // Field iteration 4: the stage PROVES the rejection came from the source
+        // re-gate, not the orchestrator gate (decisive diagnostic provenance).
         assertEquals(ObservationSessionOrchestrator.StartAttempt.Blocked(
-            RadioType.BLE, SessionIssueKey.NOT_ELIGIBLE), attempt)
+            RadioType.BLE, SessionIssueKey.NOT_ELIGIBLE,
+            ObservationSessionOrchestrator.StartStage.SOURCE_REFUSAL), attempt)
         val snap = states.last()
         assertEquals(RadioSessionUiStatus.IDLE, snap.bleSession.status)
         assertEquals(SessionIssueKey.NOT_ELIGIBLE, snap.bleSession.issueKey)
+    }
+
+    @Test
+    fun `S1 - orchestrator gate rejection carries ORCHESTRATOR_GATE stage provenance`() {
+        val orch = orchestrator()
+        val attempt = orch.startBleSession(
+            StartAuthorization(foregroundEligible = false, preciseLocation = true,
+                capabilityReady = true))
+        assertEquals(ObservationSessionOrchestrator.StartAttempt.Blocked(
+            RadioType.BLE, SessionIssueKey.NOT_ELIGIBLE,
+            ObservationSessionOrchestrator.StartStage.ORCHESTRATOR_GATE), attempt)
+    }
+
+    @Test
+    fun `S2 - source readiness refusal carries SOURCE_REFUSAL stage with its own issue`() {
+        val orch = orchestrator()
+        supervisor.onHostResumed()
+        ble.configuredRefusal = ObservationError.RadioDisabled(RadioType.BLE)
+        val attempt = orch.startBleSession(fullAuth)
+        val blocked = attempt as ObservationSessionOrchestrator.StartAttempt.Blocked
+        assertEquals(ObservationSessionOrchestrator.StartStage.SOURCE_REFUSAL, blocked.stage)
+        // Distinct typed issue: a radio-specific failure must NOT collapse into
+        // a generic (in)eligibility reason.
+        org.junit.Assert.assertNotEquals(SessionIssueKey.NOT_ELIGIBLE, blocked.issue)
+    }
+
+    @Test
+    fun `S3 - successful eligible start reports Started, never Blocked`() {
+        val orch = orchestrator()
+        supervisor.onHostResumed()
+        val attempt = orch.startBleSession(fullAuth)
+        assertEquals(ObservationSessionOrchestrator.StartAttempt.Started(RadioType.BLE), attempt)
     }
 
     @Test

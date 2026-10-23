@@ -23,9 +23,9 @@ import android.util.Log
  * instead of BuildConfig, which newer AGP versions do not generate by default.
  */
 object FieldDiagnostics {
-    const val BUILD_MARKER = "FieldDiag-03"
+    const val BUILD_MARKER = "FieldDiag-04"
     private const val TAG = "RadioObserverDiag"
-    const val CAPACITY = 24
+    const val CAPACITY = 40
 
     @Volatile
     private var debuggable = false
@@ -34,6 +34,10 @@ object FieldDiagnostics {
 
     /** Bounded in-memory chronology (main-thread appends; synchronized defensively). */
     private val rows = ArrayList<String>(CAPACITY)
+
+    /** Strictly increasing process-local sequence: makes timeline order explicit
+     *  across resume/recreation and audit the transcribed nonmonotonic offsets. */
+    private var sequence = 0L
 
     /** Call once from MainActivity.onCreate; release builds stay silent. */
     fun initialize(appContext: Context) {
@@ -59,13 +63,17 @@ object FieldDiagnostics {
         return "${event}${sb}"
     }
 
+    /** Pure, testable row-line format: sequence + monotonic elapsed seconds. */
+    fun rowLine(seq: Long, elapsedMs: Long, text: String): String =
+        "#$seq +${"%.3f".format(elapsedMs / 1000.0)}s $text"
+
     private fun appendRow(text: String) {
         val elapsedMs = (System.nanoTime() - startNanos) / 1_000_000
-        val line = "[+${elapsedMs}ms] $text"
-        synchronized(this) {
-            rows.add(line)
-            if (rows.size > CAPACITY) rows.removeAt(0)
+        val line = synchronized(this) {
+            sequence += 1
+            rowLine(sequence, elapsedMs, text).also { rows.add(it) }
         }
+        if (rows.size > CAPACITY) rows.removeAt(0)
     }
 
     /** Copy of the bounded chronology, oldest first (for the on-screen panel). */

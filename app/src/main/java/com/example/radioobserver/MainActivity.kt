@@ -154,6 +154,8 @@ class MainActivity : ComponentActivity() {
         // Phase 3.7: on recreation the transient Start intent is dropped (no replay);
         // the read-only refresh below re-reads OS facts on every resume.
         if (savedInstanceState != null) {
+            FieldDiagnostics.log("activity_recreated",
+                "note" to "timeline_continues_process_clock")
             permissionFlowController.onActivityRecreated()
         }
         setContent {

@@ -181,3 +181,89 @@ visible "Tanılama ▸ (FieldDiag-03)" disclosure even without a PC.
    screenshot the panel (chronology + live booleans) — one screenshot is enough;
    no ADB/log sharing needed. 6. Check "Gözlemler" separately; zero passive Wi-Fi
    results does NOT prove its observer failed.
+
+---
+
+# Fourth Field Iteration — FieldDiag-04 Guard-Provenance Instrumentation (2026-10-23)
+
+## Authoritative FieldDiag-03 trace (first DECISIVE in-app evidence)
+
+Xiaomi, FieldDiag-03 APK: panel shows both taps REACHED the app and BOTH attempts
+returned Blocked while the tap-time facts were eligible=true, fineLocation=true,
+coarseLocation=true, btScan=true, readiness=Ready, and sessions stayed IDLE.
+Trace: +76ms settings_returned (all grants true) -> +77ms activity_resume ->
++78ms eligibility_changed=true -> +8.893s start_tap BLE (all true, Ready) ->
++8.893s start_attempt BLE outcome=Blocked -> +9.215s start_tap WIFI (all true,
+Ready) -> +9.215s start_attempt WIFI outcome=Blocked -> +11.08s/+12.204s
+eligibility_changed=false (user left to screenshot: pause+stop) -> ~+72.3s
+settings_returned -> activity_resume -> eligibility_changed=true (return; the
+IDLE+NOT_ELIGIBLE hint, if any, clears via the R1 hook).
+
+Audit of the anomaly: the "+7232ms" pair after "+12204ms" is a transcription
+digit-loss of ~+72.3s values; the code uses ONE process-wide monotonic
+System.nanoTime origin and append-order display. The third iteration's
+milliseconds-only format was still ambiguity-prone; FieldDiag-04 fixes the format.
+
+## Full source audit result (fourth pass — every Blocked producer enumerated)
+
+start() decision table (path: ObservationSessionOrchestrator.start): duplicate
+OBSERVING/STOPPING -> Started (idempotent); !preciseLocation -> NeedsRuntimePermission;
+!capabilityReady -> Blocked(capabilityIssue); !foregroundEligible ||
+!supervisor.isForegroundEligible -> Blocked(NOT_ELIGIBLE, gate); source
+ForegroundIneligible -> Blocked(NOT_ELIGIBLE, source re-gate); other source
+refusals -> mapRefusal -> NeedsRuntimePermission or Blocked(typed issue).
+Presenter tap-time facts are read synchronously in the SAME block the gate reads
+(same supervisor instance, same main thread, same instant) — the logged facts
+CANNOT diverge from the gate's first check. CONCLUSION (explicit): with all logged
+facts true, the trace CANNOT identify which guard returned Blocked — the FieldDiag-03
+start_attempt row omitted the typed issue and stage. Root cause NOT proven; the
+decisive missing fact is exactly the typed issue + stage, which FieldDiag-04 now
+records. No behavioral fix was applied (no proven defect; the previous stale-hint
+workaround is NOT repeated).
+
+## FieldDiag-04 changes (DEBUG-only, no policy change)
+
+- Orchestrator StartAttempt.Blocked gains a typed decision STAGE:
+  ORCHESTRATOR_GATE (eligibility/capability gates) vs SOURCE_REFUSAL (the source's
+  own re-gate/readiness refusal). Pure JVM; UI semantics unchanged.
+- start_attempt now logs radio, attemptNo, outcome, the EXACT typed issue, the
+  stage, sourceCalled=YES/NO and sourceAccepted. If the reason is unavailable the
+  stage is still shown — never an invented reason.
+- start_tap logs an anonymous per-radio attempt number; permission-path taps log
+  theirs too. MainActivity logs activity_recreated so a recreation boundary is
+  visible in the timeline.
+- Bounded ring enlarged to the last 40 rows; each row carries a strictly increasing
+  process-local sequence "#N" and a seconds-based monotonic elapsed "+8.912s",
+  ending the transcription ambiguity.
+- Privacy unchanged: typed booleans/enum names only; no MAC/BSSID/payload/SSID/
+  location/identifiers; no disk/network; release builds emit and render nothing.
+
+## Tests and gates (fresh, final tree)
+
+New JVM behavior tests: S1 (gate rejection carries ORCHESTRATOR_GATE stage),
+S2 (source readiness refusal carries SOURCE_REFUSAL with its OWN distinct typed
+issue, not a generic eligibility reason), S3 (successful eligible start reports
+Started, never Blocked); Q3 upgraded to assert the SOURCE_REFUSAL stage. Ring
+tests updated (capacity 40, marker FieldDiag-04, sequence + seconds format).
+Gates: :core:radio:test --rerun-tasks EXIT 0 — 234/234 (231+3), 0 failed;
+:app:testDebugUnitTest --rerun-tasks EXIT 0 — 4/4; :app:compileDebugKotlin EXIT 0;
+:app:assembleDebug EXIT 0; :app:lintDebug --rerun-tasks EXIT 0 (0 errors, 15
+warnings, baseline). Activity/Compose boundary not host-testable (stated openly).
+
+## APK identity (FieldDiag-04 build)
+
+com.hjinlabs.radioobserver, versionCode 1, versionName 0.1.0-phase1 (unchanged).
+/app/radioobserver/app/build/outputs/apk/debug/app-debug.apk; 23526952 bytes;
+SHA-256 4ad30042558de733bc0111d93b2c1f4e1372f762dbdad9e5a0a4d5be383ac980.
+"FieldDiag-04" CONFIRMED inside the DEX; "FieldDiag-03" ABSENT (old build
+distinguishable on the phone via the panel marker).
+
+## Next phone retest (decisive)
+
+1. Install the FieldDiag-04 APK; the collapsed chip MUST read "Tanılama ▸
+   (FieldDiag-04)". 2. Enable Bluetooth, Wi-Fi, Location services. 3. Open the app;
+   explicit Start per radio (grant OS prompts if asked; return; second Start if
+   needed). 4. Expand "Tanılama" and screenshot: the start_attempt rows now show
+   the EXACT issue + stage (gate vs source) + sourceCalled — that single typed
+   fact will identify the failing guard. 5. Check "Gözlemler" separately; zero
+   passive Wi-Fi results does not prove registration failure.
