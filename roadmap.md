@@ -375,7 +375,18 @@ honest overflow; adjacent accessible list), Zaman tüneli (session-local last-se
 chronology; no fabricated first-seen; stable rowId tie-break). Same sanitized state,
 same empty taxonomy, same detail navigation; view choice is non-persisted UI state
 dispatching nothing. 12 new core regressions (278/278 core, 45/45 app, lint 0/15).
-DEBUG APK only. Phone retest required. Details: docs/field-test-start-permission-2026-10-23.md (fifth
+DEBUG APK only. Phone retest required.
+
+POST-ROADMAP QA (2026-10-23): Xiaomi radar visibility audit — defect CONFIRMED and
+fixed. Root cause: consecutive session ordinals ("obs-1"…) have String hashes
+differing by 1, so the linear angle formula stacked every dot at effectively the
+same point (11 records, ~3 visible). Fix: golden-ratio angle mix (~132.7° spread for
+consecutive ordinals), decorrelated radius jitter, and explicit count-bearing
+clusters for residual visual merges (accounting invariant singles + cluster counts +
+overflow == source rows, host-tested; members reachable in the adjoining list).
+Also fixed: radar projection now honors the CURRENT source filter (was hard-wired
+ALL). 4 new core regressions (282/282 core, 45/45 app, lint 0/15). DEBUG APK only.
+Phone retest of the 11-row scenario required. Details: docs/field-test-start-permission-2026-10-23.md (fifth
 section).
 
 ## Phase 3 — Friendly Compose UI & Live Observation State (COMPLETE: 10/10 done)
