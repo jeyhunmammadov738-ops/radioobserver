@@ -102,3 +102,62 @@ TalkBack) are not part of acceptance; existing accessibility semantics were kept
 5. End the session → all views show the honest empty state; nothing lingers.
 6. Geçmiş unchanged (records, delete, Clear All, consent); FieldDiag still hidden on
    cold start, seven taps.
+
+## QA follow-up (2026-10-23): Xiaomi radar visibility discrepancy — CONFIRMED DEFECT, FIXED
+
+Observation: Gözlemler showed 11 session observations (Tümü), but only ~3 radar
+markers were distinguishable (two hollow Wi-Fi squares, one filled BLE dot).
+
+### Root cause (proven, not assumed)
+Real session rowIds are consecutive ordinals ("obs-1", "obs-2", …) whose String
+hashes differ by EXACTLY 1. The original angle formula `(h % 36000) / 100` turned a
+hash delta of 1 into a 0.01° angle delta, and the radius jitter `(h / 36000) % 1000`
+was perfectly correlated with the same degenerate quantization. Exact simulation of
+the real geometry: obs-1…obs-9 all landed at 263.1°, obs-10/obs-11 at 236.0°; every
+same-ring dot sat at the SAME pixel position (e.g. obs-3…obs-9 all at 263.1° /
+radius 0.984). So 11 records WERE projected and drawn — no data loss, no filtering,
+no clipping — but drawn as fully overdrawn, uncounted super-impositions. The
+screenshot was therefore a faithful rendering of a degenerate projection.
+
+### Second defect found during this audit
+RadarView hard-wired FeedFilter.ALL into its projection while the adjoining list used
+the live filter: with Bluetooth/Wi-Fi selected, radar and list would disagree. Fixed:
+the radar projection now honors the CURRENT filter in all three views.
+
+### Minimal safe correction (presentation-only, deterministic)
+- Angle: golden-ratio mix `((h * 0x9E3779B9) and 0xFFFFFFFF) * 360 / 2^32` —
+  consecutive ordinals now spread ~132.7° apart (host-proven). Jitter decorrelated
+  via an independent avalanche constant (0x85EBCA6B).
+- Explicit cluster accounting: dots whose base geometry visually merges (chord
+  distance < 0.12 of the canvas radius — two ~20dp markers on a ~170dp canvas)
+  are grouped into count-bearing cluster markers (union-find; representative = first
+  member in authoritative order). Nothing is silently dropped or overdrawn: the
+  accounting invariant singles + Σcluster counts + documented overflow == source
+  rows is host-tested. Cluster members stay individually reachable in the adjoining
+  list; cluster hollow styling only when EVERY member is stale (mixed clusters stay
+  filled — honest).
+- Markers are now real Compose elements (clickable, announced via contentDescription)
+  instead of Canvas-only pixels; rings remain Canvas. Honesty copy unchanged.
+
+### Count reconciliation for the 11-row scenario (real ordinals, 2 BLE + 9 Wi-Fi
+with mixed buckets incl. stale and unknown)
+Before fix: (a)=11 source, (b)=11 post-filter, (c)=11 projected, (d)≈3 visually
+distinguishable, (e)=0 explicitly counted clusters (overdraws uncounted),
+(f)=0 cap exclusions → d+e+f ≠ 11 (defect).
+After fix: (a)=11, (b)=11, (c)=11, (d)=11 individually distinguishable markers
+(golden-angle spread: 19.8°…327.3°, no collisions in this fixture), (e)=0 clusters,
+(f)=0 excluded → 11 = 11 ✓. Residual collisions in other sessions would be
+explicit clusters with exact counts, still accounted.
+
+### Regression evidence (final tree; all exit 0, --no-daemon, tests/lint --rerun-tasks)
+- :core:radio:test → 282/282 (278 previous + 4 new: 11-row ordinals scenario with
+  accounting invariant and collapse regression guard; synthetic residual-collision
+  cluster grouping with representative/stable member order; mixed-freshness cluster
+  honesty; golden-angle decorrelation proof).
+- :app:testDebugUnitTest → 45/45. :app:compileDebugKotlin, :app:assembleDebug → success.
+- :app:lintDebug → 0 errors / 15 warnings (baseline kept).
+- Debug APK: com.hjinlabs.radioobserver 0.1.0-phase1, 23,878,986 bytes, SHA-256
+  fe1c16b80f310315f8c0ba91b61216f040e8e3937f4c37aa7bb051cfe533d045.
+- Unchanged: scanning engines, permissions/manifest, lifecycle, History (consent,
+  deletion, retention), FieldDiag-04, applicationId, bottom tabs. Host tests cannot
+  prove on-screen pixel geometry: Xiaomi retest of the 11-row scenario required.

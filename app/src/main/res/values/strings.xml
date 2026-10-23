@@ -62,6 +62,13 @@
         <item quantity="other">%1$d kaynak daha var; şema sınırlı olduğu için listede gösteriliyor.</item>
     </plurals>
     <string name="radar_all_unknown_note">Hiçbir kaynağın sinyal kategorisi bilinmiyor; halkalar bir yakınlık anlamı taşımaz.</string>
+    <string name="radar_legend_cluster">Sayı yazılı daire, aynı noktada üst üste binen kaynak sayısını gösterir; üyelerini alttaki listede inceleyebilirsin.</string>
+    <plurals name="a11y_radar_cluster">
+        <item quantity="one">%1$d kaynak üst üste bindi; üyesini aşağıdaki listede inceleyebilirsin.</item>
+        <item quantity="other">%1$d kaynak üst üste bindi; üyelerini aşağıdaki listede inceleyebilirsin.</item>
+    </plurals>
+    <string name="a11y_radar_marker_format">%1$s, %2$s, %3$s</string>
+
     <string name="timeline_note">Bu zaman tüneli yalnızca bu oturuma aittir; sıralama son görülme saatine göredir. İlk görülme zamanı ayrı tutulmaz; oturum sona erince liste boşalır.</string>
 
     <!-- Final polish (2026-10-23): dogal Turkce teknik metinler -->

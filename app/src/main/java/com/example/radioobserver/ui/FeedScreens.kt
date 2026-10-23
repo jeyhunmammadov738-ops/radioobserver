@@ -41,8 +41,14 @@ import com.example.radioobserver.core.radio.ui.ObservationFeedProjection.FeedFil
 import com.example.radioobserver.core.radio.ui.ObservationRowUi
 import com.example.radioobserver.core.radio.ui.ObservationUiState
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.aspectRatio
@@ -184,7 +190,10 @@ fun ObservationsFeedScreen(
                     }
                     LiveViewKind.RADAR -> RadarView(
                         state = state,
-                        rows = rows,
+                        // QA 2026-10-23: the radar projection now honors the CURRENT
+                        // source filter (previously hard-wired to ALL — inconsistent
+                        // with Liste/Zaman tüneli whenever Bluetooth/Wi-Fi was chosen).
+                        filter = filter,
                         onRowSelect = onRowSelect,
                     )
                     LiveViewKind.TIMELINE -> TimelineView(
@@ -465,13 +474,11 @@ private fun timeText(epochMs: Long): String = DetailTime.plainClockText(epochMs)
 @Composable
 private fun RadarView(
     state: ObservationUiState,
-    rows: List<ObservationRowUi>,
+    filter: FeedFilter,
     onRowSelect: (String) -> Unit,
 ) {
-    val projection = LiveViewProjection.radarProjection(
-        state, ObservationFeedProjection.FeedFilter.ALL,
-    )
-    val rowsForRadar = rows // same filtered membership as Liste (host-tested)
+    val projection = LiveViewProjection.radarProjection(state, filter)
+    val rowsForRadar = ObservationFeedProjection.rowsFor(state, filter)
     Column(modifier = Modifier.fillMaxSize()) {
         // Prominent, accessible honesty copy — always visible, both semantics and text.
         Text(
@@ -490,78 +497,112 @@ private fun RadarView(
                 modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.xs),
             )
         }
-        // Bounded schematic canvas (aspect-locked square; no sweep animation that
-        // could imply a live physical scan).
         val bleColor = MaterialTheme.colorScheme.primary
         val wifiColor = MaterialTheme.colorScheme.tertiary
         val ringColor = MaterialTheme.colorScheme.onSurfaceVariant
-        val dotRadiusPx = with(LocalDensity.current) { 10.dp.toPx() }
-        val tapRadiusPx = with(LocalDensity.current) { 28.dp.toPx() }
-        Box(
+        val clusterColor = MaterialTheme.colorScheme.surfaceVariant
+        val onClusterColor = MaterialTheme.colorScheme.onSurfaceVariant
+        // Bounded schematic square: rings drawn on Canvas; markers are REAL Compose
+        // elements (clickable, semantic, never dot-only) positioned deterministically.
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = Spacing.lg)
-                .aspectRatio(1f)
-                // Dot taps resolve the SAME rowId the list uses; a miss does nothing.
-                .pointerInput(projection) {
-                    detectTapGestures { tap ->
-                        val center = Offset(size.width / 2f, size.height / 2f)
-                        val maxR = (minOf(size.width, size.height) / 2f).toFloat()
-                        projection.dots.firstOrNull { dot ->
-                            val angleRad = Math.toRadians(dot.angleDegrees)
-                            // Schematic coordinates: 0 degrees is up; purely visual.
-                            val pos = Offset(
-                                x = center.x + (maxR * dot.radiusFraction * Math.sin(angleRad)).toFloat(),
-                                y = center.y - (maxR * dot.radiusFraction * Math.cos(angleRad)).toFloat(),
-                            )
-                            (tap - pos).getDistance() <= tapRadiusPx
-                        }?.let { dot -> onRowSelect(dot.rowId) }
-                    }
-                },
+                .aspectRatio(1f),
         ) {
+            val canvasSide = maxWidth
+            val maxR = canvasSide / 2
+            val center = canvasSide / 2
             Canvas(modifier = Modifier.fillMaxSize()) {
-                val center = Offset(size.width / 2f, size.height / 2f)
-                val maxR = size.minDimension / 2f
-                // Four abstract ring bands (SignalBucket taxonomy), gap included.
+                val cx = size.width / 2f
+                val cy = size.height / 2f
+                val rMax = size.minDimension / 2f
                 val bands = LiveViewProjection.RING_ORDER.size
                 for (i in 0 until bands) {
                     drawCircle(
                         color = ringColor.copy(alpha = 0.35f),
-                        radius = maxR * ((i + 1).toFloat() / bands),
-                        center = center,
+                        radius = rMax * ((i + 1).toFloat() / bands),
+                        center = Offset(cx, cy),
                         style = Stroke(width = 2f),
                     )
                 }
-                for (dot in projection.dots) {
-                    val angleRad = Math.toRadians(dot.angleDegrees)
-                    val pos = Offset(
-                        x = center.x + (maxR * dot.radiusFraction * Math.sin(angleRad)).toFloat(),
-                        y = center.y - (maxR * dot.radiusFraction * Math.cos(angleRad)).toFloat(),
+            }
+            projection.markers.forEach { marker ->
+                val angleRad = Math.toRadians(marker.angleDegrees)
+                val x = center + maxR * (marker.radiusFraction * Math.sin(angleRad)).toFloat()
+                val y = center - maxR * (marker.radiusFraction * Math.cos(angleRad)).toFloat()
+                if (marker.isCluster) {
+                    // Explicit count-bearing cluster: members stay individually
+                    // reachable in the adjoining list (also announced here).
+                    val clusterA11y = pluralStringResource(
+                        R.plurals.a11y_radar_cluster, marker.count, marker.count,
                     )
+                    Box(
+                        modifier = Modifier
+                            .offset(x - 20.dp, y - 20.dp)
+                            .size(40.dp)
+                            .semantics { contentDescription = clusterA11y },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = clusterColor,
+                            border = androidx.compose.foundation.BorderStroke(
+                                2.dp,
+                                if (marker.radio == RadioType.BLE) bleColor else wifiColor,
+                            ),
+                        ) {
+                            Text(
+                                text = marker.count.toString(),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = onClusterColor,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            )
+                        }
+                    }
+                } else {
+                    val dot = marker.members.first()
+                    val name = dot.name ?: stringResource(R.string.row_unnamed)
+                    val markerA11y = stringResource(
+                        R.string.a11y_radar_marker_format, name, radioWord(dot.radio),
+                        stringResource(
+                            when (dot.freshness) {
+                                FreshnessState.FRESH -> R.string.freshness_fresh
+                                FreshnessState.STALE -> R.string.freshness_stale
+                                FreshnessState.UNKNOWN -> R.string.freshness_unknown
+                            },
+                        ),
+                    )
+                    val shape = if (dot.radio == RadioType.BLE) CircleShape
+                        else androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
                     val color = if (dot.radio == RadioType.BLE) bleColor else wifiColor
                     val hollow = dot.freshness == FreshnessState.STALE
-                    if (dot.radio == RadioType.WIFI) {
-                        // Wi-Fi: rounded square so the two source types differ by
-                        // SHAPE as well as color (never color alone).
-                        drawRoundRect(
-                            color = color,
-                            topLeft = Offset(pos.x - dotRadiusPx, pos.y - dotRadiusPx),
-                            size = Size(dotRadiusPx * 2, dotRadiusPx * 2),
-                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(dotRadiusPx / 2),
-                            style = if (hollow) Stroke(width = 3f) else Fill,
-                        )
-                    } else {
-                        drawCircle(
-                            color = color,
-                            radius = dotRadiusPx,
-                            center = pos,
-                            style = if (hollow) Stroke(width = 3f) else Fill,
+                    // 32dp touch target around a 16dp symbol: dots are tappable and
+                    // announced; the list below remains the always-available path.
+                    Box(
+                        modifier = Modifier
+                            .offset(x - 16.dp, y - 16.dp)
+                            .size(32.dp)
+                            .clickable(onClick = { onRowSelect(dot.rowId) })
+                            .semantics { contentDescription = markerA11y },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .let {
+                                    if (hollow) {
+                                        it.border(2.dp, color, shape)
+                                    } else {
+                                        it.background(color, shape)
+                                    }
+                                },
                         )
                     }
                 }
             }
         }
-        // Legend: taxonomy + shape + freshness provenance, all in words.
+        // Legend: taxonomy + shape + freshness provenance + cluster semantics.
         Column(modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.xs)) {
             Text(
                 text = stringResource(R.string.radar_legend_rings),
@@ -578,6 +619,11 @@ private fun RadarView(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Text(
+                text = stringResource(R.string.radar_legend_cluster),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             if (projection.overflowCount > 0) {
                 Text(
                     text = pluralStringResource(
@@ -587,8 +633,9 @@ private fun RadarView(
                 )
             }
         }
-        // Adjacent accessible list: EVERY filtered row (including overflowed ones)
-        // stays reachable without the canvas. Same keys, same detail navigation.
+        // Adjacent accessible list: EVERY filtered row (including cluster members
+        // and overflowed ones) stays reachable without the canvas. Same keys, same
+        // detail navigation.
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
