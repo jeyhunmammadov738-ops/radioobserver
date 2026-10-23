@@ -67,6 +67,74 @@ class ObservationSessionOrchestratorTest {
         rssiDbm = -67,
     )
 
+    // P (field fix 2026-10-23, seventh iteration): the real-phone 13->0 pipeline defect
+
+    /** Integration: REAL WifiSessionCoordinator wired through the REAL supervisor. */
+    @Test
+    fun `P1 - deferred cached read rows survive the orchestrator live-guard`() {
+        // Minimal local fakes (same contracts as the coordinator test file).
+        class ManualScheduler : com.example.radioobserver.core.radio.boundary.SessionScheduler {
+            val tasks = mutableListOf<Pair<Long, () -> Unit>>()
+            override fun schedule(delayMs: Long, action: () -> Unit) =
+                object : com.example.radioobserver.core.radio.boundary.ScheduledTask {
+                    override fun cancel() {}
+                }.also { tasks += delayMs to action }
+        }
+        class FakeEngine : com.example.radioobserver.core.radio.boundary.WifiResultEngine {
+            var callback: com.example.radioobserver.core.radio.boundary.WifiResultEngineCallback? = null
+            override fun start(cb: com.example.radioobserver.core.radio.boundary.WifiResultEngineCallback) =
+                com.example.radioobserver.core.radio.boundary.WifiEngineStartOutcome.Started.also { callback = cb }
+            override fun stop() = true
+        }
+        class FakeFetcher : com.example.radioobserver.core.radio.boundary.WifiResultFetcher {
+            var count = 0
+            override fun fetch(): com.example.radioobserver.core.radio.boundary.WifiFetchOutcome {
+                count += 1
+                return com.example.radioobserver.core.radio.boundary.WifiFetchOutcome.Results(
+                    listOf(com.example.radioobserver.core.radio.boundary.WifiAccessPointRecord(
+                        bssid = "aa:bb:cc:dd:ee:ff", ssid = "Cafe", rssiDbm = -60,
+                        bootTimestampUs = 1_000_000L, ageMs = 500L)))
+            }
+        }
+        val engine = FakeEngine()
+        val fetcher = FakeFetcher()
+        val scheduler = ManualScheduler()
+        val coordinator = com.example.radioobserver.core.radio.boundary.WifiSessionCoordinator(
+            engine, fetcher,
+            { com.example.radioobserver.core.radio.permissions.ObservationReadiness.Ready(RadioType.WIFI, emptySet()) },
+            { true }, scheduler, { nowMs })
+        val realSupervisor = RadioObservationSupervisor(
+            FakeBleObservationSource(), coordinator)
+        val orch = ObservationSessionOrchestrator(
+            supervisor = realSupervisor,
+            pipelineFactory = { ObservationPipeline(clock = { nowMs }) },
+            onUiState = { states += it },
+        )
+        realSupervisor.onHostResumed()
+
+        val attempt = orch.startWifiObservation(fullAuth)
+        assertEquals(ObservationSessionOrchestrator.StartAttempt.Started(RadioType.WIFI), attempt)
+        // THE phone defect (13 raw results -> zero rows): the cached read used to run
+        // synchronously INSIDE start, before the orchestrator published OBSERVING and
+        // created the pipeline, so its rows were dropped by the live-guard and a null
+        // pipeline. Now the read is deferred and runs exactly like a broadcast.
+        assertTrue(states.last().wifiSession.status == RadioSessionUiStatus.OBSERVING)
+        assertTrue(states.last().rows.none { it.radio == RadioType.WIFI }) // nothing yet
+        assertEquals(0, fetcher.count) // nothing fetched synchronously during start
+
+        scheduler.tasks.single { it.first == 0L }.second() // run the deferred cached read
+
+        val final = states.last()
+        // Rows now CONTAIN the cached Wi-Fi observation (13->13 on the phone).
+        assertTrue(final.rows.any { it.radio == RadioType.WIFI })
+        final.rows.filter { it.radio == RadioType.WIFI }.let {
+            assertEquals("Cafe", it.single().name)
+        }
+        // Session stays OBSERVING: the best-effort cached read never ends it.
+        assertEquals(RadioSessionUiStatus.OBSERVING, final.wifiSession.status)
+        assertEquals(1, fetcher.count)
+    }
+
     // Q (field fix 2026-10-23) ------------------------------------------------
 
     @Test

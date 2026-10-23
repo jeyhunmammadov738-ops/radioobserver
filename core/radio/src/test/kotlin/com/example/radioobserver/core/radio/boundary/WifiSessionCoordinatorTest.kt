@@ -165,7 +165,8 @@ class WifiSessionCoordinatorTest {
         val result = sys.source.startObservation(WifiSessionCoordinator.wifiDefault(), listener)
         assertTrue(result is SourceStartResult.Started)
         assertEquals(1, sys.fixtureEngine.startCount)
-        assertEquals(1, sys.scheduler.tasks.size)
+        // Two scheduled tasks: the bounded timeout + the DEFERRED initial cached read.
+        assertEquals(2, sys.scheduler.tasks.size)
         assertTrue(listener.events.single() is ObservationEvent.SessionStarted)
     }
 
@@ -186,35 +187,38 @@ class WifiSessionCoordinatorTest {
             outcome = WifiFetchOutcome.Results(listOf(record())) })
         val listener = Listener()
         sys.source.startObservation(WifiSessionCoordinator.wifiDefault(), listener)
-        // Initial cached read (honest, marked NOT new) + the broadcast fetch.
-        assertEquals(1, sys.fetcher.fetchCount)
-        val initial = listener.events.filterIsInstance<ObservationEvent.WifiResultsAvailable>().single()
-        assertFalse(initial.updatedSinceLastDelivery)
+        // The initial cached read is DEFERRED (not pumped here): broadcast-only fetch.
+        assertEquals(0, sys.fetcher.fetchCount)
 
         sys.fixtureEngine.callback!!.onScanResultsBroadcast(updated = true)
 
-        val delivery = listener.events.filterIsInstance<ObservationEvent.WifiResultsAvailable>().last()
+        val delivery = listener.events.filterIsInstance<ObservationEvent.WifiResultsAvailable>().single()
         assertEquals(1, delivery.observations.size)
         assertTrue(delivery.updatedSinceLastDelivery)
         assertEquals("wifi:aa:bb:cc:dd:ee:ff", delivery.observations.single().observationKey)
         assertEquals("Cafe", delivery.observations.single().displayName) // display hint only
         assertNotNull(delivery.observations.single().manufacturerCandidate)
-        assertEquals(2, sys.fetcher.fetchCount)
+        assertEquals(1, sys.fetcher.fetchCount)
     }
 
     @Test
-    fun `I0 - explicit start reads the cached result list once and delivers it as NOT new`() {
+    fun `J0 - deferred initial read delivers the cached list exactly once, NOT new`() {
         val sys = system(fetcher = FakeFetcher().apply {
             outcome = WifiFetchOutcome.Results(listOf(record(ageMs = 120_000))) })
         val listener = Listener()
         val result = sys.source.startObservation(WifiSessionCoordinator.wifiDefault(), listener)
         assertTrue(result is SourceStartResult.Started)
+        assertEquals(0, sys.fetcher.fetchCount) // nothing synchronous during start
+        assertEquals(1, listener.events.size) // SessionStarted only: pre-OBSERVING delivery
+        // (real-phone proof of the seventh-iteration defect: a synchronous read was
+        // dropped by the caller's live-guard; the read is now deferred like a broadcast)
+
+        sys.scheduler.tasks.single { it.first == 0L }.second() // run the deferred read
+
         assertEquals(1, sys.fetcher.fetchCount) // exactly one initial read, no polling
         val delivery = listener.events.filterIsInstance<ObservationEvent.WifiResultsAvailable>().single()
         assertFalse(delivery.updatedSinceLastDelivery) // cached, never labeled newly detected
         assertEquals(120_000L, delivery.resultsAgeMs) // honest age passes through
-        assertEquals(1, delivery.observations.size)
-        // Provenance: the flag and age travel per observation.
         assertEquals("false", delivery.observations.single().sourceFields["resultsUpdatedFlag"])
         assertEquals("120000", delivery.observations.single().sourceFields["resultAgeMs"])
     }
@@ -225,6 +229,7 @@ class WifiSessionCoordinatorTest {
         val listener = Listener()
         val result = sys.source.startObservation(WifiSessionCoordinator.wifiDefault(), listener)
         assertTrue(result is SourceStartResult.Started)
+        sys.scheduler.tasks.single { it.first == 0L }.second() // run the deferred read
         assertEquals(1, sys.fetcher.fetchCount) // the read happened
         assertTrue(listener.events.single() is ObservationEvent.SessionStarted) // nothing else
         // The receiver stays armed: a later broadcast still delivers normally.
@@ -241,6 +246,7 @@ class WifiSessionCoordinatorTest {
                 ObservationError.PermissionDenied(PermissionId.ACCESS_FINE_LOCATION, false, RadioType.WIFI)) })
         val listener = Listener()
         val result = sys.source.startObservation(WifiSessionCoordinator.wifiDefault(), listener)
+        sys.scheduler.tasks.single { it.first == 0L }.second() // run the deferred read
         // Cached-read failure is NOT a session error: started, no terminal event.
         assertTrue(result is SourceStartResult.Started)
         assertTrue(listener.events.single() is ObservationEvent.SessionStarted)
@@ -252,14 +258,16 @@ class WifiSessionCoordinatorTest {
     }
 
     @Test
-    fun `I3 - refused starts never read the cache`() {
+    fun `I3 - refused starts never read the cache and schedule nothing`() {
         val foregroundOff = system(foreground = { false })
         foregroundOff.source.startObservation(WifiSessionCoordinator.wifiDefault(), Listener())
         assertEquals(0, (foregroundOff.fetcher as FakeFetcher).fetchCount)
+        assertEquals(0, foregroundOff.scheduler.tasks.size)
         val permissionOff = system(
             readiness = { blocked(ReadinessBlocker.PermissionMissing(PermissionId.ACCESS_FINE_LOCATION, permanent = false)) })
         permissionOff.source.startObservation(WifiSessionCoordinator.wifiDefault(), Listener())
         assertEquals(0, (permissionOff.fetcher as FakeFetcher).fetchCount)
+        assertEquals(0, permissionOff.scheduler.tasks.size)
     }
 
     @Test
@@ -342,11 +350,10 @@ class WifiSessionCoordinatorTest {
         sys.fetcher.outcome = WifiFetchOutcome.Results(listOf(record(ssid = "Second")))
         sys.fixtureEngine.callback!!.onScanResultsBroadcast(updated = true)
 
-        // Initial cached read ("First", NOT new) + two broadcast deliveries.
+        // Deferred initial read not pumped: exactly the two broadcast deliveries.
         val deliveries = listener.events.filterIsInstance<ObservationEvent.WifiResultsAvailable>()
-        assertEquals(3, deliveries.size)
-        assertFalse(deliveries[0].updatedSinceLastDelivery)
-        assertEquals("Second", deliveries[2].observations.single().displayName)
+        assertEquals(2, deliveries.size)
+        assertEquals("Second", deliveries[1].observations.single().displayName)
     }
 
     // ---- 5) fail-closed permission/foreground loss at broadcast ----
@@ -380,8 +387,8 @@ class WifiSessionCoordinatorTest {
 
         assertTrue(listener.events.filterIsInstance<ObservationEvent.SourceFailed>()
             .single().error is ObservationError.RadioDisabled)
-        // 1 = initial cached read; the readiness-loss broadcast read 0.
-        assertEquals(1, sys.fetcher.fetchCount)
+        // Deferred initial read not pumped: the readiness-loss broadcast read 0.
+        assertEquals(0, sys.fetcher.fetchCount)
     }
 
     @Test
@@ -395,8 +402,8 @@ class WifiSessionCoordinatorTest {
         sys.fixtureEngine.callback!!.onScanResultsBroadcast(updated = true)
 
         assertEquals(SessionEndReason.FOREGROUND_LOST, (listener.events.last() as ObservationEvent.SessionEnded).reason)
-        // 1 = the initial cached read at explicit start; the LOSS-time broadcast read 0.
-        assertEquals(1, sys.fetcher.fetchCount)
+        // Deferred initial read was cancelled by the loss-driven stop: nothing was read.
+        assertEquals(0, sys.fetcher.fetchCount)
     }
 
     // ---- 6) cleanup exactly once; late/duplicate broadcasts ----
@@ -412,8 +419,9 @@ class WifiSessionCoordinatorTest {
         sys.fixtureEngine.callback!!.onScanResultsBroadcast(updated = true)
 
         assertEquals(eventsAtEnd, listener.events.size)
-        // 1 = initial cached read; the late post-cancel broadcast read nothing.
-        assertEquals(1, sys.fetcher.fetchCount)
+        // The deferred initial read was cancelled at session end: the post-cancel
+        // broadcast AND the cancelled initial task both read nothing.
+        assertEquals(0, sys.fetcher.fetchCount)
     }
 
     @Test
@@ -431,7 +439,7 @@ class WifiSessionCoordinatorTest {
         val listener = Listener()
         sys.source.startObservation(WifiSessionCoordinator.wifiDefault(), listener)
 
-        sys.scheduler.tasks.single().second()
+        sys.scheduler.tasks.single { it.first == 30_000L }.second()
 
         assertEquals(SessionEndReason.DURATION_ELAPSED, (listener.events.last() as ObservationEvent.SessionEnded).reason)
         assertEquals(1, sys.fixtureEngine.stopCount)

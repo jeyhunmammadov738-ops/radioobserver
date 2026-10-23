@@ -97,6 +97,7 @@ class WifiSessionCoordinator(
     private var activeListener: ObservationSessionListener? = null
     private var activeStore: ObservationStore? = null
     private var timeoutTask: ScheduledTask? = null
+    private var initialReadTask: ScheduledTask? = null
     private var sessionCounter = 0L
 
     /** Conservative short window for a user-initiated listening burst. */
@@ -132,18 +133,18 @@ class WifiSessionCoordinator(
         activeStore = ObservationStore()
         timeoutTask = scheduler.schedule(spec.maxDurationMs) { stopInternal(SessionEndReason.DURATION_ELAPSED) }
         listener.onObservationEvent(ObservationEvent.SessionStarted(handle.sessionId))
-        // Initial cached-result read (2026-10-23, sixth field iteration): on an explicit,
-        // fully gated Start the platform cache may ALREADY hold the most recent scan
-        // results (API 29+: getScanResults() exposes cached results WITHOUT triggering
-        // a scan; this class still has no scan API). ONE guarded read only; cached rows
-        // are delivered with updatedSinceLastDelivery=false and honest per-record age —
-        // never presented as newly detected. An empty cache or a failed read NEVER
-        // stops the session: the receiver stays armed for later broadcasts.
-        when (val cached = fetcher.fetch()) {
-            is WifiFetchOutcome.Results -> if (cached.records.isNotEmpty()) {
-                deliver(listener, cached.records, updated = false)
-            }
-            is WifiFetchOutcome.Failed -> Unit // cached-read failure is not a session error
+        // Initial cached-result read (2026-10-23, sixth/seventh field iterations): on an
+        // explicit, fully gated Start the platform cache may ALREADY hold the most recent
+        // scan results (API 29+: getScanResults() exposes cached results WITHOUT triggering
+        // a scan; this class still has no scan API). ONE guarded read, DEFERRED through
+        // the session scheduler (production: main-looper post): a synchronous read inside
+        // startObservation was delivered while the caller's session state was still
+        // pre-OBSERVING and its pipeline not yet created, so every cached row was silently
+        // dropped at the caller's live-guard (real-phone proof: rawCount=13 -> zero feed
+        // rows). The deferred read runs exactly like a broadcast: after the session is
+        // fully OBSERVING. Empty cache / failed read never stops the session.
+        initialReadTask = scheduler.schedule(0) {
+            if (activeHandle != null) handleResultsAvailable(updated = false, bestEffort = true)
         }
         return SourceStartResult.Started(handle)
     }
@@ -154,28 +155,45 @@ class WifiSessionCoordinator(
     }
 
     private val engineCallback = object : WifiResultEngineCallback {
-        override fun onScanResultsBroadcast(updated: Boolean) {
-            val listener = activeListener ?: return // late broadcast after stop: ignored, never revives
-            // Re-evaluate all gates at broadcast time: fail closed on any loss.
-            if (!foregroundEligible()) {
-                listener.onObservationEvent(ObservationEvent.SourceFailed(
-                    ObservationError.ForegroundIneligible(radio)))
-                stopInternal(SessionEndReason.FOREGROUND_LOST)
-                return
+        override fun onScanResultsBroadcast(updated: Boolean) =
+            handleResultsAvailable(updated, bestEffort = false)
+    }
+
+    /**
+     * Shared, re-gated result handling for BOTH entry points (broadcast + deferred
+     * initial cached read). Gates are re-evaluated at read time: fail closed on any loss
+     * for BOTH paths. [bestEffort] marks the initial cached read: a failed or empty
+     * cache read is enrichment, not a session outcome — it never emits an error event
+     * and never stops the listening session (the receiver stays armed for broadcasts).
+     */
+    private fun handleResultsAvailable(updated: Boolean, bestEffort: Boolean) {
+        val listener = activeListener ?: return // late delivery after stop: ignored, never revives
+        // Re-evaluate all gates at read time: fail closed on any loss.
+        if (!foregroundEligible()) {
+            listener.onObservationEvent(ObservationEvent.SourceFailed(
+                ObservationError.ForegroundIneligible(radio)))
+            stopInternal(SessionEndReason.FOREGROUND_LOST)
+            return
+        }
+        val readiness = readinessProvider()
+        if (readiness is ObservationReadiness.Blocked) {
+            listener.onObservationEvent(ObservationEvent.SourceFailed(readinessAsError(readiness)))
+            stopInternal(SessionEndReason.SOURCE_ERROR)
+            return
+        }
+        when (val fetched = fetcher.fetch()) {
+            is WifiFetchOutcome.Failed -> if (bestEffort) {
+                return // swallowed: cached-read failure is not a session error
+            } else {
+                listener.onObservationEvent(ObservationEvent.SourceFailed(fetched.error))
+                stopInternal(SessionEndReason.SOURCE_ERROR) // no auto-retry/restart
             }
-            val readiness = readinessProvider()
-            if (readiness is ObservationReadiness.Blocked) {
-                listener.onObservationEvent(ObservationEvent.SourceFailed(readinessAsError(readiness)))
-                stopInternal(SessionEndReason.SOURCE_ERROR)
-                return
-            }
-            when (val fetched = fetcher.fetch()) {
-                is WifiFetchOutcome.Failed -> {
-                    listener.onObservationEvent(ObservationEvent.SourceFailed(fetched.error))
-                    stopInternal(SessionEndReason.SOURCE_ERROR) // no auto-retry/restart
+            is WifiFetchOutcome.Results ->
+                if (bestEffort && fetched.records.isEmpty()) {
+                    return // empty cache: no empty-noise event, listening continues
+                } else {
+                    deliver(listener, fetched.records, updated)
                 }
-                is WifiFetchOutcome.Results -> deliver(listener, fetched.records, updated)
-            }
         }
     }
 
@@ -233,6 +251,8 @@ class WifiSessionCoordinator(
         activeStore = null
         timeoutTask?.cancel()
         timeoutTask = null
+        initialReadTask?.cancel()
+        initialReadTask = null
 
         val stopFailed = !engine.stop()
         handle.markInactive()

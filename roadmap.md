@@ -291,8 +291,21 @@ field check. 4 new coordinator tests, existing tests consciously updated for
 the intentional behavior change (core 241/241, app 4/4, compile/assemble OK,
 lint 0 errors/15 warnings). Separately, a DESIGN-ONLY privacy proposal for
 optional local history was written (docs/optional-local-history-design.md);
-nothing persistent was implemented. Details: docs/field-test-start-permission
--2026-10-23.md (sixth section). Details: docs/field-test-start-permission-2026-10-23.md (fifth
+nothing persistent was implemented. Details: docs/field-test-start-permission-2026-10-23.md (sixth section).
+
+Seventh field iteration (2026-10-23, night): the phone PROVED the initial cached
+read fetched 13 raw results yet the feed showed zero Wi-Fi rows. Root cause: the
+read ran synchronously inside startObservation, before the orchestrator
+published OBSERVING and created the pipeline, so its live-guard (and the null
+pipeline) silently discarded all 13. Fixed by deferring the read through the
+session scheduler (main-looper post) so it runs exactly like a broadcast;
+best-effort semantics kept (empty/failed read never stops the session; gate
+loss still fails closed). New integration test P1 wires the real coordinator +
+supervisor + orchestrator and proves cached rows survive into uiState.rows
+(core 242/242, app 4/4, compile/assemble OK, lint 0 errors/15 warnings).
+Real-device repair UNVERIFIED until the retest shows the cached rows in the
+feed. Details: docs/field-test-start-permission-2026-10-23.md (seventh
+section). Details: docs/field-test-start-permission-2026-10-23.md (fifth
 section).
 
 ## Phase 3 — Friendly Compose UI & Live Observation State (COMPLETE: 10/10 done)

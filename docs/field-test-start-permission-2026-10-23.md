@@ -419,3 +419,68 @@ their age; if none appear, open Tanılama: wifi_evidence rows show the RAW cache
 count (0 = device cache genuinely empty at that moment, expected when nobody
 scanned; exception = a different, now-visible cause). A successful listening
 session with zero results remains possible and is NOT a failed start.
+
+---
+
+# Seventh Field Iteration — 13 Raw Wi-Fi Results → Zero Rows: PROVEN Pipeline Defect (2026-10-23)
+
+## Authoritative FieldDiag evidence (cached-read build)
+
+Xiaomi: Wi-Fi Start accepted (start_attempt outcome=started sourceAccepted=true),
+receiver registered=true, wifi_evidence kind=fetch rawCount=13 outcome=results —
+13 Android scan-cache objects crossed the fetch boundary. Feed on "Tümü": two BLE
+rows, ZERO Wi-Fi rows; session later timed out. BLE feed and details worked.
+
+## Stage-by-stage accountability (verified against code)
+
+raw ScanResults 13 (fetch, FieldDiagnostics counter — observed) → coordinator
+deliver: classifier total, no drops (malformed keys still delivered — verified
+by existing tests) → 13 accepted by the session-local store (distinct keys;
+equal receipt times are Accepted, not stale — verified store semantics) →
+WifiResultsAvailable(13) delivered to the orchestrator listener DURING
+startObservation (synchronous) → **DROP: orchestrator onEvent live-guard**.
+At that instant the session status was still IDLE (the orchestrator publishes
+OBSERVING only AFTER starter() returns), so `if (live)` was false and ALL 13
+observations were discarded; `pipeline?.submit` could not have stored them
+either — ensurePipeline() also runs only after starter() returns. Feed
+projection, filters, snapshot, TTL (receipt-time, fresh) and sanitization were
+innocent: they never saw the rows. BLE worked because its events arrive
+asynchronously after OBSERVING is published. Both delivery-order defects existed
+only for the synchronous initial cached read introduced in the sixth iteration.
+
+## Fix (smallest correct change, at the failing boundary)
+
+The initial cached read is now DEFERRED through the session scheduler
+(production: main-looper post; host tests: manual pump), so it runs exactly
+like a broadcast: after the caller has published OBSERVING and created the
+pipeline. The read shares one re-gated path with broadcasts (gate loss still
+fails closed for both) and is explicitly best-effort: an empty cache or a
+failed read never emits an error event and never stops the listening session.
+stopInternal cancels the pending read (no post-stop reads). No UI change, no
+scan trigger, no policy change.
+
+## Regression tests
+
+J0 (coordinator): start reads nothing synchronously; the deferred task delivers
+the cached list exactly once, NOT-new, honest age + provenance. P1 (NEW,
+integration: real WifiSessionCoordinator + real supervisor + real orchestrator):
+start → OBSERVING with no rows, zero synchronous fetches; pump the deferred
+read → the cached Wi-Fi row IS in uiState.rows and the session stays OBSERVING.
+This reproduces the phone defect's exact boundary. I1/I2 updated (empty/failed
+best-effort read), I3 extended (refused starts schedule nothing), timeout/dedup
+tests updated for the two scheduled tasks. Gates: core 242/242 (241+1), app 4/4,
+compile OK, assembleDebug OK, lintDebug 0 errors/15 warnings.
+
+## APK identity
+
+com.hjinlabs.radioobserver, versionCode 1, versionName 0.1.0-phase1 (unchanged).
+Size 23526952 bytes; SHA-256 18daf218ac7210b4e13033abee88a47c1640ffc949b65c97ef7b71f9e0b3c657.
+"wifi_evidence" and "FieldDiag-04" confirmed in the DEX.
+
+## Phone retest
+
+Install; Wi-Fi + Location ON; explicit Wi-Fi Start. Expected: cached access
+points (the same ~13 the platform cache returns) appear in the feed immediately
+on "Tümü"/"Wi-Fi", labeled NOT-new with honest ages (STALE/unknown freshness);
+BLE behaves as before. If the cache is empty at that moment, no rows is honest —
+the wifi_evidence rawCount will say so.
