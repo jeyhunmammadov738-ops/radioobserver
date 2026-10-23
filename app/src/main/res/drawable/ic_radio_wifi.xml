@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Simplified Wi-Fi glyph (Apache-2.0 Material symbol geometry, hand-adapted).
+     Tinted at render time; never carries meaning by color alone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M12,21l2.09,-2.09C13.67,18.39 12.89,18 12,18C11.11,18 10.33,18.39 9.91,18.91L12,21zM12,3C7.72,3 3.67,4.69 0.54,7.51l1.53,1.53C4.88,6.42 8.26,5 12,5C15.74,5 19.12,6.42 21.93,9.03l1.53,-1.52C20.33,4.69 16.28,3 12,3zM12,8C8.9,8 6.06,9.22 3.94,11.2l1.53,1.53C7.13,11.08 9.46,10 12,10C14.54,10 16.87,11.08 18.53,12.73l1.53,-1.53C17.94,9.22 15.1,8 12,8zM12,15C10.44,15 9.02,15.62 8,16.6L12,21l4,-4.4C14.98,15.62 13.56,15 12,15z" />
+</vector>

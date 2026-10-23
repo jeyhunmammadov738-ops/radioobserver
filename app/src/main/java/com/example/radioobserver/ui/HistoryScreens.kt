@@ -37,18 +37,29 @@ import com.example.radioobserver.core.radio.history.HistoryRecord
 import com.example.radioobserver.core.radio.model.RadioType
 import com.example.radioobserver.core.radio.pipeline.FreshnessState
 import com.example.radioobserver.core.radio.signal.SignalBucket
+import com.example.radioobserver.history.HistoryAgeFormat
 import com.example.radioobserver.history.HistoryController
+import com.example.radioobserver.ui.components.CompactInfoRow
+import com.example.radioobserver.ui.components.EmptyState
+import com.example.radioobserver.ui.components.SectionHeader
+import com.example.radioobserver.ui.components.SourceIcon
+import com.example.radioobserver.ui.components.Spacing
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 /**
- * OPTIONAL LOCAL HISTORY — browsing surface (post-roadmap feature; professionally
- * restyled 2026-10-23). Geçmiş is now a clean READ/BROWSE screen: count, source
- * filters, saved records, per-record delete, confirmed Clear All. ALL preference
- * controls (recording consent, Wi-Fi-names consent, retention) moved to the Ayarlar
- * tab, which drives the SAME [HistoryController] state — no duplicate settings, no
- * behavior change. Default recording stays OFF; nothing here starts/stops sessions.
+ * PREMIUM UI/UX V2 Geçmiş (post-roadmap, 2026-10-23).
+ * Defects fixed vs. the previous build: oversized history cards with large blank
+ * areas and disproportionate actions → compact one-line-density rows with a clear
+ * two-action footer (Ayrıntılar / Sil, both 48dp targets; row tap can NEVER delete).
+ * The history detail now uses the SAME shared card/CompactInfoRow design language as
+ * the live detail — the inconsistent near-black rectangular sub-panels are gone —
+ * and the raw millisecond record age is shown as honest, human-readable Turkish
+ * ("yaklaşık 47 dakika"), clearly labeled as the age AT RECORDING TIME.
+ * Behavior UNCHANGED: browsing only; single delete and confirmed Clear All keep the
+ * existing controller/store behavior; deleting history never touches live sessions;
+ * saved records are never presented as currently broadcasting devices.
  */
 enum class HistoryFilter { ALL, BLUETOOTH, WIFI }
 
@@ -65,64 +76,65 @@ fun HistoryScreen(
 ) {
     var clearAllConfirm by remember { mutableStateOf(false) }
     val historyClearAllA11y = stringResource(R.string.history_clear_all_a11y)
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text(
-            text = stringResource(R.string.history_title),
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.semantics { heading() },
-        )
+    Surface(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+        ) {
+            Text(
+                text = stringResource(R.string.history_title),
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.semantics { heading() },
+            )
 
-        if (state.failedClosedNotice) {
-            HistoryNoticeCard(stringResource(R.string.history_failed_closed_notice), onDismissNotices)
-        } else if (state.droppedNotice) {
-            HistoryNoticeCard(stringResource(R.string.history_dropped_notice), onDismissNotices)
-        }
+            if (state.failedClosedNotice) {
+                HistoryNoticeCard(stringResource(R.string.history_failed_closed_notice), onDismissNotices)
+            } else if (state.droppedNotice) {
+                HistoryNoticeCard(stringResource(R.string.history_dropped_notice), onDismissNotices)
+            }
 
-        // Count + source filters.
-        Text(
-            text = stringResource(R.string.history_count, state.records.size),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        HistoryFilterRow(filter, onFilterChange)
-        val visible = state.records.filter {
-            when (filter) {
-                HistoryFilter.ALL -> true
-                HistoryFilter.BLUETOOTH -> it.radio == RadioType.BLE
-                HistoryFilter.WIFI -> it.radio == RadioType.WIFI
+            Text(
+                text = stringResource(R.string.history_count, state.records.size),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            HistoryFilterRow(filter, onFilterChange)
+            val visible = state.records.filter {
+                when (filter) {
+                    HistoryFilter.ALL -> true
+                    HistoryFilter.BLUETOOTH -> it.radio == RadioType.BLE
+                    HistoryFilter.WIFI -> it.radio == RadioType.WIFI
+                }
             }
-        }
-        if (visible.isEmpty()) {
-            // Honest empty state + a contextual pointer to the preferences in Ayarlar.
-            Text(stringResource(R.string.history_empty), style = MaterialTheme.typography.bodyMedium)
-            if (!state.consent.recordingEnabled) {
-                TextButton(
-                    onClick = onOpenSettings,
-                    modifier = Modifier.heightIn(min = 48.dp),
-                ) { Text(stringResource(R.string.history_open_settings)) }
+            if (visible.isEmpty()) {
+                // Honest empty state + a contextual pointer to the preferences in Ayarlar.
+                EmptyState(stringResource(R.string.history_empty))
+                if (!state.consent.recordingEnabled) {
+                    TextButton(
+                        onClick = onOpenSettings,
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) { Text(stringResource(R.string.history_open_settings)) }
+                }
+            } else {
+                visible.forEach { record ->
+                    HistoryRecordRow(
+                        record = record,
+                        onOpenDetail = { onOpenDetail(record.id) },
+                        onDelete = { onDeleteOne(record.id) },
+                    )
+                }
             }
-        } else {
-            visible.forEach { record ->
-                HistoryRecordCard(
-                    record = record,
-                    onOpenDetail = { onOpenDetail(record.id) },
-                    onDelete = { onDeleteOne(record.id) },
-                )
+            if (state.records.isNotEmpty()) {
+                OutlinedButton(
+                    onClick = { clearAllConfirm = true },
+                    modifier = Modifier
+                        .heightIn(min = 48.dp)
+                        .semantics { contentDescription = historyClearAllA11y },
+                ) { Text(stringResource(R.string.history_clear_all)) }
             }
-        }
-        if (state.records.isNotEmpty()) {
-            OutlinedButton(
-                onClick = { clearAllConfirm = true },
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .semantics { contentDescription = historyClearAllA11y },
-            ) { Text(stringResource(R.string.history_clear_all)) }
         }
     }
 
@@ -153,7 +165,7 @@ fun HistoryScreen(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun HistoryFilterRow(filter: HistoryFilter, onFilterChange: (HistoryFilter) -> Unit) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         FilterChip(
             selected = filter == HistoryFilter.ALL,
             onClick = { onFilterChange(HistoryFilter.ALL) },
@@ -178,7 +190,7 @@ private fun HistoryFilterRow(filter: HistoryFilter, onFilterChange: (HistoryFilt
 @Composable
 private fun HistoryNoticeCard(text: String, onDismiss: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(modifier = Modifier.padding(Spacing.md), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             Text(text, style = MaterialTheme.typography.bodySmall)
             TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) {
                 Text(stringResource(R.string.history_notice_dismiss))
@@ -187,29 +199,43 @@ private fun HistoryNoticeCard(text: String, onDismiss: () -> Unit) {
     }
 }
 
+/**
+ * Compact history row: source icon, safe name, source + timestamp meta line, and a
+ * clear two-action footer. Deleting requires the EXPLICIT Sil button (48dp) — a row
+ * tap can never delete; Ayrıntılar opens the SAME sanitized detail path.
+ */
 @Composable
-private fun HistoryRecordCard(
+private fun HistoryRecordRow(
     record: HistoryRecord,
     onOpenDetail: () -> Unit,
     onDelete: () -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = record.displayName ?: stringResource(R.string.history_unnamed),
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = stringResource(
-                    R.string.history_row_line,
-                    radioLabel(record.radio),
-                    formatTime(record.savedAtEpochMs),
-                ),
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(modifier = Modifier.padding(Spacing.md), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SourceIcon(radio = record.radio)
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = record.displayName ?: stringResource(R.string.history_unnamed),
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.history_row_line,
+                            radioLabel(record.radio),
+                            formatTime(record.savedAtEpochMs),
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 TextButton(onClick = onOpenDetail, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text(stringResource(R.string.history_open_detail))
                 }
@@ -226,108 +252,99 @@ fun HistoryDetailScreen(
     record: HistoryRecord?,
     onBack: () -> Unit,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
+    Surface(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
-            Text(
-                stringResource(R.string.history_detail_title),
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier
-                    .weight(1f)
-                    .semantics { heading() },
-            )
-            OutlinedButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text(stringResource(R.string.feed_back))
-            }
-        }
-        if (record == null) {
-            // Honest unavailable state (record deleted/expired while open).
-            Text(stringResource(R.string.history_detail_missing), style = MaterialTheme.typography.bodyMedium)
-            return@Column
-        }
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
-                    text = record.displayName ?: stringResource(R.string.history_unnamed),
-                    style = MaterialTheme.typography.titleLarge,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
+                    stringResource(R.string.history_detail_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics { heading() },
                 )
-                DetailSectionTitle(R.string.detail_section_source_time)
-                HistoryDetailRow(stringResource(R.string.history_detail_radio), radioLabel(record.radio))
-                HistoryDetailRow(
-                    stringResource(R.string.history_detail_name),
-                    record.displayName ?: stringResource(R.string.history_unnamed),
-                )
-                HistoryDetailRow(
-                    stringResource(R.string.history_detail_saved_at),
-                    formatTime(record.savedAtEpochMs),
-                )
-                HistoryDetailRow(
-                    stringResource(R.string.history_detail_observed_at),
-                    formatTime(record.observedAtEpochMs),
-                )
-            }
-        }
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                DetailSectionTitle(R.string.detail_section_signal)
-                HistoryDetailRow(
-                    stringResource(R.string.history_detail_signal),
-                    signalBucketLabel(record.signalBucket) +
-                        " (" + stringResource(R.string.signal_qualitative_note) + ")",
-                )
-                HistoryDetailRow(
-                    stringResource(R.string.history_detail_freshness),
-                    freshnessLabel(record.freshness),
-                )
-                HistoryDetailRow(
-                    stringResource(R.string.history_detail_age),
-                    record.ageMs?.let { stringResource(R.string.history_detail_age_ms, it) }
-                        ?: stringResource(R.string.history_detail_age_unknown),
-                )
-            }
-        }
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                DetailSectionTitle(R.string.detail_section_hints)
-                record.manufacturerHint?.let {
-                    HistoryDetailRow(stringResource(R.string.history_detail_manufacturer), it)
+                OutlinedButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(stringResource(R.string.feed_back))
                 }
-                record.typeHint?.let {
-                    HistoryDetailRow(stringResource(R.string.history_detail_type), it)
-                }
-                Text(stringResource(R.string.history_privacy_note), style = MaterialTheme.typography.bodySmall)
             }
-        }
-    }
-}
-
-@Composable
-private fun DetailSectionTitle(res: Int) {
-    Text(
-        text = stringResource(res),
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.semantics { heading() },
-    )
-}
-
-@Composable
-private fun HistoryDetailRow(label: String, value: String) {
-    Surface(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(label, style = MaterialTheme.typography.bodySmall)
-            Text(value, style = MaterialTheme.typography.bodyLarge)
+            if (record == null) {
+                // Honest unavailable state (record deleted/expired while open).
+                EmptyState(stringResource(R.string.history_detail_missing))
+                return@Column
+            }
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(Spacing.lg), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        SourceIcon(radio = record.radio)
+                        Text(
+                            text = record.displayName ?: stringResource(R.string.history_unnamed),
+                            style = MaterialTheme.typography.titleLarge,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    SectionHeader(stringResource(R.string.detail_section_source_time))
+                    CompactInfoRow(stringResource(R.string.history_detail_radio), radioLabel(record.radio))
+                    CompactInfoRow(
+                        stringResource(R.string.history_detail_name),
+                        record.displayName ?: stringResource(R.string.history_unnamed),
+                    )
+                    CompactInfoRow(
+                        stringResource(R.string.history_detail_saved_at),
+                        formatTime(record.savedAtEpochMs),
+                    )
+                    CompactInfoRow(
+                        stringResource(R.string.history_detail_observed_at),
+                        formatTime(record.observedAtEpochMs),
+                    )
+                }
+            }
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(Spacing.lg), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    SectionHeader(stringResource(R.string.detail_section_signal))
+                    CompactInfoRow(
+                        stringResource(R.string.history_detail_signal),
+                        signalBucketLabel(record.signalBucket),
+                    )
+                    CompactInfoRow(
+                        stringResource(R.string.history_detail_freshness),
+                        freshnessLabel(record.freshness),
+                    )
+                    CompactInfoRow(
+                        stringResource(R.string.history_detail_age),
+                        // Kayıt ANINDAKİ yaş — mevcut geçen süre değil; ham milisaniye
+                        // yerine dürüst insan-dostu biçim ("yaklaşık 47 dakika").
+                        record.ageMs?.let { HistoryAgeFormat.formatApproximate(it) }
+                            ?: stringResource(R.string.history_detail_age_unknown),
+                    )
+                }
+            }
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(Spacing.lg), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    SectionHeader(stringResource(R.string.detail_section_hints))
+                    record.manufacturerHint?.let {
+                        CompactInfoRow(stringResource(R.string.history_detail_manufacturer), it)
+                    }
+                    record.typeHint?.let {
+                        CompactInfoRow(stringResource(R.string.history_detail_type), it)
+                    }
+                    Text(stringResource(R.string.signal_qualitative_note), style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.history_privacy_note), style = MaterialTheme.typography.bodySmall)
+                }
+            }
         }
     }
 }

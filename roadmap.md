@@ -331,7 +331,19 @@ persisted); Geçmiş became browse-only with ALL history preferences moved to Ay
 feed rows grouped with tonal source/freshness badges; detail screens grouped into
 sections; four dead string resources removed. Core 266/266, app 23/23, compile OK,
 assembleDebug OK, lintDebug 0 errors/16 warnings (exact baseline). Phone retest
-required. Details: docs/professional-ui-navigation-redesign.md. Details: docs/field-test-start-permission-2026-10-23.md (fifth
+required. Details: docs/professional-ui-navigation-redesign.md.
+
+POST-ROADMAP REFINEMENT 2 (2026-10-23): Premium UI/UX V2 (developer-approved;
+docs/premium-ui-ux-v2.md). One shared Material 3 design system (DesignSystem.kt:
+4/8dp Spacing tokens, StatusPill/SectionHeader/CompactInfoRow/SourceIcon/EmptyState,
+pure PillStyle + DashboardSummary with new host tests) applied to all surfaces:
+dashboard summary strip + refined status-first source cards; denser honest feed rows
+with freshness pills; compact history rows with explicit two-action footer; grouped
+Ayarlar with short summaries + expandable full consent copy; unified detail design
+language (black sub-panels removed) and human-friendly Turkish record age
+("yaklaşık 47 dakika"). No behavior/permission/scanning change; history settings
+reuse one controller. Core 266/266, app 35/35, lint 0 errors/15 warnings, DEBUG APK
+only. Phone retest required. Details: docs/field-test-start-permission-2026-10-23.md (fifth
 section).
 
 ## Phase 3 — Friendly Compose UI & Live Observation State (COMPLETE: 10/10 done)

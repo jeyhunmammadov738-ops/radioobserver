@@ -48,6 +48,18 @@
     <string name="diag_toggle_a11y">Tanılama panelini göster veya gizle</string>
     <string name="diag_hint">Bu bölüm yalnızca hata ayıklama sürümünde görünür. Tanılama verileri bellekte tutulur; diske yazılmaz, yüklenmez ve geçmişe karışmaz.</string>
 
+    <!-- Premium UI/UX V2 (2026-10-23) -->
+    <string name="summary_active_sources">Aktif kaynak: %1$d</string>
+    <string name="summary_live_records">Canlı kayıt: %1$d</string>
+    <string name="summary_none_active">Şu anda etkin gözlem oturumu yok</string>
+    <string name="card_info_expand">Ayrıntı</string>
+    <string name="card_info_collapse">Gizle</string>
+    <string name="settings_summary_recording_on">Açık — bundan sonraki gözlemler yalnızca bu cihazda kaydedilir</string>
+    <string name="settings_summary_recording_off">Kapalı — gözlemler yalnızca canlı oturumda gösterilir</string>
+    <string name="settings_summary_wifi_names_on">Açık — yalnızca görünen ağ adı kaydedilir</string>
+    <string name="settings_summary_wifi_names_off">Kapalı — Wi-Fi gözlemleri adsız kaydedilir</string>
+    <string name="settings_privacy_short">Gözlemler varsayılan olarak bellekte tutulur; oturumda silinir. Geçmişe yalnızca siz açarsanız kaydedilir.</string>
+
     <!-- Grouped live-observation detail sections -->
     <string name="detail_section_source_time">Kaynak ve zaman</string>
     <string name="detail_section_signal">Sinyal ve güven</string>
@@ -90,7 +102,6 @@
     <string name="history_detail_signal">Sinyal kategorisi</string>
     <string name="history_detail_freshness">Kayıt anındaki tazelik</string>
     <string name="history_detail_age">Kayıt anındaki yaş</string>
-    <string name="history_detail_age_ms">%1$d milisaniye önce</string>
     <string name="history_detail_age_unknown">Bilinmiyor</string>
     <string name="history_privacy_note">Bu kayıt cihazınızın dışına hiç çıkmaz. Silme, oturum veya izin durumunu hiçbir şekilde etkilemez.</string>
 

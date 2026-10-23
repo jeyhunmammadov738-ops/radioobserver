@@ -1,5 +1,6 @@
 package com.example.radioobserver.ui
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -35,18 +36,20 @@ import com.example.radioobserver.R
 import com.example.radioobserver.core.radio.history.HistoryConsent
 import com.example.radioobserver.core.radio.history.HistoryLimits
 import com.example.radioobserver.history.HistoryController
+import com.example.radioobserver.ui.components.SectionHeader
+import com.example.radioobserver.ui.components.Spacing
 
 /**
- * AYARLAR tab — the single source-of-truth UI for the optional local history
- * preferences (post-roadmap UI iteration, 2026-10-23). Drives the SAME existing
- * [HistoryController] state Geçmiş reads: no duplicate settings, no preference
- * resets, no new storage. Recording and Wi-Fi-names consent stay OFF by default;
- * retention stays 7/14/30 days hard-capped at 30; the Clear All entry uses the
- * SAME confirmed controller behavior.
- *
- * "Uygulama hakkında" hosts the DEBUG-only developer access: tapping the version
- * label SEVEN times unlocks (in-memory only) the developer section with
- * Tanılamayı göster/gizle. Cold start always re-hides the FieldDiag panel.
+ * PREMIUM UI/UX V2 Ayarlar (post-roadmap, 2026-10-23).
+ * Defects fixed vs. the previous build: long consent/privacy paragraphs overpowering
+ * the controls → GROUPED preferences with real hierarchy. Each toggle carries a short
+ * truthful summary line; the full consent/privacy text stays one tap away in
+ * expandable sections (nothing essential deleted or hidden by default from consent
+ * meaning — recording keeps its full consent text immediately visible on FIRST
+ * enable via the expansion, and the summary always states the core fact).
+ * Behavior UNCHANGED: the SAME HistoryController/preferences; recording default OFF,
+ * separate Wi-Fi-names consent OFF, 7/14/30-day retention, 500-record capacity,
+ * confirmed Clear All, DEBUG-only developer unlock preserved.
  */
 @Composable
 fun SettingsScreen(
@@ -62,6 +65,9 @@ fun SettingsScreen(
     onDiagVisibilityChange: (Boolean) -> Unit,
 ) {
     var clearAllConfirm by remember { mutableStateOf(false) }
+    var privacyExpanded by remember { mutableStateOf(false) }
+    var consentExpanded by remember { mutableStateOf(false) }
+    var wifiNamesExpanded by remember { mutableStateOf(false) }
     val historyToggleA11y = stringResource(R.string.history_recording_toggle_a11y)
     val historyWifiNamesA11y = stringResource(R.string.history_wifi_names_toggle_a11y)
     val versionA11y = stringResource(R.string.app_version_a11y)
@@ -71,8 +77,8 @@ fun SettingsScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(Spacing.lg),
+        verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
         Text(
             text = stringResource(R.string.settings_title),
@@ -80,55 +86,50 @@ fun SettingsScreen(
             modifier = Modifier.semantics { heading() },
         )
 
-        // ---- Geçmiş kaydı: consent + separate Wi-Fi-names consent + retention ----
-        SettingsCard(R.string.settings_history_section) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    stringResource(R.string.history_recording_toggle),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier
-                        .weight(1f)
-                        .semantics { heading() },
-                )
-                Switch(
-                    checked = state.consent.recordingEnabled,
-                    onCheckedChange = {
-                        onConsentChange(state.consent.copy(recordingEnabled = it))
-                    },
-                    modifier = Modifier.semantics { contentDescription = historyToggleA11y },
-                )
-            }
-            Text(stringResource(R.string.history_consent_body), style = MaterialTheme.typography.bodySmall)
+        // ---- Geçmiş kaydı: toggle + short summary; full consent one tap away ----
+        SettingsGroup(R.string.settings_history_section) {
+            ToggleRow(
+                label = stringResource(R.string.history_recording_toggle),
+                a11y = historyToggleA11y,
+                checked = state.consent.recordingEnabled,
+                onCheckedChange = { onConsentChange(state.consent.copy(recordingEnabled = it)) },
+            )
+            Text(
+                text = stringResource(
+                    if (state.consent.recordingEnabled) R.string.settings_summary_recording_on
+                    else R.string.settings_summary_recording_off),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            ExpandableText(
+                expanded = consentExpanded,
+                onToggle = { consentExpanded = !consentExpanded },
+                bodyRes = listOf(R.string.history_consent_body),
+            )
 
             if (state.consent.recordingEnabled) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        stringResource(R.string.history_wifi_names_toggle),
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Switch(
-                        checked = state.consent.wifiNamesEnabled,
-                        onCheckedChange = {
-                            onConsentChange(state.consent.copy(wifiNamesEnabled = it))
-                        },
-                        modifier = Modifier.semantics { contentDescription = historyWifiNamesA11y },
-                    )
-                }
-                Text(stringResource(R.string.history_wifi_names_body), style = MaterialTheme.typography.bodySmall)
-
-                Text(
-                    stringResource(R.string.history_retention_label),
-                    style = MaterialTheme.typography.titleMedium,
+                ToggleRow(
+                    label = stringResource(R.string.history_wifi_names_toggle),
+                    a11y = historyWifiNamesA11y,
+                    checked = state.consent.wifiNamesEnabled,
+                    onCheckedChange = { onConsentChange(state.consent.copy(wifiNamesEnabled = it)) },
                 )
+                Text(
+                    text = stringResource(
+                        if (state.consent.wifiNamesEnabled) R.string.settings_summary_wifi_names_on
+                        else R.string.settings_summary_wifi_names_off),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                // The FULL Wi-Fi-names consent text stays one tap away (essential
+                // consent information; never deleted).
+                ExpandableText(
+                    expanded = wifiNamesExpanded,
+                    onToggle = { wifiNamesExpanded = !wifiNamesExpanded },
+                    bodyRes = listOf(R.string.history_wifi_names_body),
+                )
+
+                SectionHeader(stringResource(R.string.history_retention_label))
                 RetentionChips(state.consent.retentionDays, onRetentionChange)
             }
 
@@ -141,17 +142,28 @@ fun SettingsScreen(
             }
         }
 
-        // ---- Gizlilik ve çalışma şekli: truthful copy, always reachable ----
-        SettingsCard(R.string.settings_privacy_section) {
-            Text(stringResource(R.string.scope_note), style = MaterialTheme.typography.bodySmall)
-            Text(stringResource(R.string.privacy_body), style = MaterialTheme.typography.bodySmall)
-            Text(stringResource(R.string.background_stop_note), style = MaterialTheme.typography.bodySmall)
-            Text(stringResource(R.string.wifi_passive_note), style = MaterialTheme.typography.bodySmall)
-            Text(stringResource(R.string.ble_bounded_note), style = MaterialTheme.typography.bodySmall)
+        // ---- Gizlilik ve çalışma şekli: short line + expandable full copy ----
+        SettingsGroup(R.string.settings_privacy_section) {
+            Text(
+                text = stringResource(R.string.settings_privacy_short),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            ExpandableText(
+                expanded = privacyExpanded,
+                onToggle = { privacyExpanded = !privacyExpanded },
+                bodyRes = listOf(
+                    R.string.scope_note,
+                    R.string.privacy_body,
+                    R.string.background_stop_note,
+                    R.string.wifi_passive_note,
+                    R.string.ble_bounded_note,
+                ),
+            )
         }
 
         // ---- Uygulama hakkında: version label hosts the DEBUG-only unlock ----
-        SettingsCard(R.string.settings_about_section) {
+        SettingsGroup(R.string.settings_about_section) {
             // The version label itself is the tappable target: SEVEN intentional
             // taps unlock the developer section (no visible hint — deliberate
             // developer-only control; nothing is persisted).
@@ -170,24 +182,15 @@ fun SettingsScreen(
 
         // ---- Developer section: DEBUG builds only, unlocked by the seven taps ----
         if (isDebugBuild && diagUnlocked) {
-            SettingsCard(R.string.diag_section_title) {
+            SettingsGroup(R.string.diag_section_title) {
                 Text(stringResource(R.string.diag_hint), style = MaterialTheme.typography.bodySmall)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        text = stringResource(if (diagVisible) R.string.diag_hide else R.string.diag_show),
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Switch(
-                        checked = diagVisible,
-                        onCheckedChange = onDiagVisibilityChange,
-                        modifier = Modifier.semantics { contentDescription = diagToggleA11y },
-                    )
-                }
+                ToggleRow(
+                    label = stringResource(
+                        if (diagVisible) R.string.diag_hide else R.string.diag_show),
+                    a11y = diagToggleA11y,
+                    checked = diagVisible,
+                    onCheckedChange = onDiagVisibilityChange,
+                )
             }
         }
     }
@@ -216,10 +219,61 @@ fun SettingsScreen(
     }
 }
 
+/** One labeled switch row with a 48dp target; the label is a heading for scanning. */
+@Composable
+private fun ToggleRow(
+    label: String,
+    a11y: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier
+                .weight(1f)
+                .semantics { heading() },
+        )
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            modifier = Modifier.semantics { contentDescription = a11y },
+        )
+    }
+}
+
+/** Collapsed long-form copy with an explicit, accessible expand/collapse control. */
+@Composable
+private fun ExpandableText(
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    bodyRes: List<Int>,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+        TextButton(onClick = onToggle, modifier = Modifier.heightIn(min = 48.dp)) {
+            Text(
+                text = stringResource(
+                    if (expanded) R.string.card_info_collapse else R.string.card_info_expand),
+                style = MaterialTheme.typography.labelMedium,
+            )
+        }
+        AnimatedVisibility(visible = expanded) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                bodyRes.forEach { res -> Text(stringResource(res), style = MaterialTheme.typography.bodySmall) }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun RetentionChips(retentionDays: Int, onRetentionChange: (Int) -> Unit) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         HistoryLimits.ALLOWED_RETENTION_DAYS.forEach { days ->
             FilterChip(
                 selected = retentionDays == days,
@@ -232,17 +286,13 @@ private fun RetentionChips(retentionDays: Int, onRetentionChange: (Int) -> Unit)
 }
 
 @Composable
-private fun SettingsCard(titleRes: Int, content: @Composable () -> Unit) {
+private fun SettingsGroup(titleRes: Int, content: @Composable () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(Spacing.md),
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm),
         ) {
-            Text(
-                text = stringResource(titleRes),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.semantics { heading() },
-            )
+            SectionHeader(stringResource(titleRes))
             content()
         }
     }
