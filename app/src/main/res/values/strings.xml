@@ -8,7 +8,6 @@
 -->
 <resources>
     <!-- 3.1 named copy keys -->
-    <string name="home_intro">Bu ekran açıkken yakındaki Bluetooth sinyallerini ve sistemde bulunan Wi-Fi sonuçlarını gözlemleyebilirsiniz.</string>
     <string name="ble_start_button">Bluetooth gözlemini başlat</string>
     <string name="ble_stop_button">Bluetooth gözlemini durdur</string>
     <string name="wifi_start_button">Kullanılabilir Wi-Fi sonuçlarını gözle</string>
@@ -19,7 +18,41 @@
     <string name="empty_feed_note">Bu oturumda gösterilecek gözlem yok. Bu, yakında cihaz olmadığını kanıtlamaz.</string>
     <string name="background_stop_note">Gözlem, aktif ekrandan ayrıldığınızda durur. Kendiliğinden yeniden başlamaz.</string>
     <string name="privacy_body">Canlı gözlemler yüklenmez veya paylaşılmaz; varsayılan olarak bellekte tutulur ve oturum bittiğinde silinir. İsteğe bağlı Geçmiş kaydı açarsanız, gelecekteki gözlemlerin özetleri yalnızca bu cihazda, uygulamaya özel bir dosyada saklanır: hiçbir yere yüklenmez, yedeklenmez veya paylaşılmaz ve siz istediğinizde silebilirsiniz.</string>
-    <string name="open_history_button">Geçmiş</string>
+
+    <!-- Post-roadmap professional UI iteration (2026-10-23): four-tab navigation -->
+    <string name="tab_observation">Gözlem</string>
+    <string name="tab_feed">Gözlemler</string>
+    <string name="tab_history">Geçmiş</string>
+    <string name="tab_settings">Ayarlar</string>
+    <string name="dashboard_subtitle">Canlı gözlem panosu</string>
+    <string name="info_section_title">Bilgi ve gizlilik</string>
+    <string name="info_section_expand">Bilgiyi göster</string>
+    <string name="info_section_collapse">Bilgiyi gizle</string>
+    <string name="info_section_expand_a11y">Bilgi ve gizlilik bölümünü aç</string>
+    <string name="info_section_collapse_a11y">Bilgi ve gizlilik bölümünü kapat</string>
+
+    <!-- Ayarlar (single source of truth for history + privacy preferences) -->
+    <string name="settings_title">Ayarlar</string>
+    <string name="settings_history_section">Geçmiş kaydı</string>
+    <string name="settings_privacy_section">Gizlilik ve çalışma şekli</string>
+    <string name="settings_about_section">Uygulama hakkında</string>
+    <string name="settings_clear_history_entry">Kayıtlı geçmişin tamamını sil</string>
+    <string name="app_version_format">Sürüm %1$s</string>
+    <string name="app_version_a11y">Sürüm etiketi</string>
+    <string name="history_open_settings">Ayarlar\'ı aç</string>
+
+    <!-- DEBUG-only developer diagnostics access (hidden by default) -->
+    <string name="diag_section_title">Geliştirici (yalnızca hata ayıklama sürümü)</string>
+    <string name="diag_show">Tanılamayı göster</string>
+    <string name="diag_hide">Tanılamayı gizle</string>
+    <string name="diag_toggle_a11y">Tanılama panelini göster veya gizle</string>
+    <string name="diag_hint">Bu bölüm yalnızca hata ayıklama sürümünde görünür. Tanılama verileri bellekte tutulur; diske yazılmaz, yüklenmez ve geçmişe karışmaz.</string>
+
+    <!-- Grouped live-observation detail sections -->
+    <string name="detail_section_source_time">Kaynak ve zaman</string>
+    <string name="detail_section_signal">Sinyal ve güven</string>
+    <string name="detail_section_hints">Üretici ve tür ipuçları</string>
+    <string name="detail_section_limits">Yorumlama sınırları</string>
 
     <!-- Optional local history (post-roadmap feature, default OFF) -->
     <string name="history_title">Gözlem Geçmişi</string>
@@ -145,8 +178,6 @@
     <string name="value_no">Hayır</string>
     <string name="value_not_available">Bilinmiyor</string>
     <string name="a11y_row_format">%1$s, %2$s, tazelik: %3$s, düğme</string>
-    <string name="a11y_open_feed">Gözlemleri aç, düğme</string>
-    <string name="open_feed_button">Gözlemler</string>
     <!-- Phase 3.7: recovery, status and honest actions -->
     <string name="recovery_permission_needs_setting">Gözlem için gereken izin verilmiyor. İzin ayarlarını açabilirsiniz; izin verdikten sonra gözlemi Başlat ile yeniden başlatmanız gerekir.</string>
     <string name="recovery_approximate_only_needs_setting">Yalnızca yaklaşık konum verilmiş. Bu gözlem özelliği hassas konum gerektirir; izin ayarlarından değiştirebilirsiniz.</string>

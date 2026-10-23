@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxSize
 import com.example.radioobserver.ble.AndroidBleObservationSource
@@ -21,7 +22,10 @@ import com.example.radioobserver.session.ObservationSessionPresenter
 import com.example.radioobserver.wifi.AndroidWifiObservationSource
 import com.example.radioobserver.history.HistoryController
 import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.res.stringResource
+import com.example.radioobserver.R
 import com.example.radioobserver.core.radio.ui.ObservationFeedProjection.FeedFilter
 import com.example.radioobserver.ui.ObservationDetailScreen
 import com.example.radioobserver.ui.ObservationsFeedScreen
@@ -30,8 +34,25 @@ import com.example.radioobserver.ui.HistoryDetailScreen
 import com.example.radioobserver.ui.HistoryFilter
 import com.example.radioobserver.ui.HistoryScreen
 import com.example.radioobserver.ui.RadioObserverControlScreen
+import com.example.radioobserver.ui.SettingsScreen
+import com.example.radioobserver.ui.theme.RadioObserverTheme
 import com.example.radioobserver.diag.FieldDiagnostics
+import com.example.radioobserver.diag.DeveloperDiagGate
+import com.example.radioobserver.navigation.AppDestination
+import com.example.radioobserver.navigation.AppDestination.TabScreen
+import com.example.radioobserver.navigation.AppNavigation
+import com.example.radioobserver.navigation.AppTab
 import com.example.radioobserver.ui.FieldDiagnosticsPanel
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -76,18 +97,20 @@ class MainActivity : ComponentActivity() {
     // Switching destination changes NO session/permission/scanning state; the control
     // screen's Start/Stop wiring is untouched. Dies with the Activity: recreation
     // returns to Home and renders only current sanitized state.
-    private sealed interface Screen {
-        data object Home : Screen
-        data object Observations : Screen
-        data class ObservationDetail(val rowId: String) : Screen
-        // Optional local history (post-roadmap feature): pure navigation, inert for
-        // sessions/permissions/scanning. Opening it changes NO live state.
-        data object History : Screen
-        data class HistoryDetail(val recordId: String) : Screen
-    }
-    private val currentScreen = mutableStateOf<Screen>(Screen.Home)
+    // Post-roadmap UI iteration (2026-10-23): four-tab bottom navigation state
+    // (Gözlem, Gözlemler, Geçmiş, Ayarlar). PURE navigation: switching a tab changes
+    // NO session/permission/scanning state and never reopens a stale detail
+    // (JVM-tested policy in AppNavigation). Dies with the Activity.
+    private val currentScreen = mutableStateOf<AppDestination>(TabScreen(AppTab.OBSERVATION))
     private val feedFilter = mutableStateOf(FeedFilter.ALL)
     private val historyFilter = mutableStateOf(HistoryFilter.ALL)
+
+    // DEBUG-only, hidden-by-default FieldDiag-04 visibility (post-roadmap policy):
+    // cold start ALWAYS hidden; seven taps on the version label in Ayarlar →
+    // Uygulama hakkında unlock the developer section; NOTHING is persisted, so
+    // process recreation re-locks and re-hides automatically.
+    private val diagGate = DeveloperDiagGate()
+    private var diagVisible = mutableStateOf(false)
 
     // OPTIONAL LOCAL HISTORY (post-roadmap feature, developer-approved 2026-10-23).
     // Default OFF; recording needs explicit user consent on the History screen.
@@ -194,16 +217,49 @@ class MainActivity : ComponentActivity() {
                 "note" to "timeline_continues_process_clock")
             permissionFlowController.onActivityRecreated()
         }
+        val appVersion = try {
+            packageManager.getPackageInfo(packageName, 0).versionName ?: ""
+        } catch (e: android.content.pm.PackageManager.NameNotFoundException) {
+            ""
+        }
         setContent {
-            // Phase 3.5: the real Turkish control screen. Actions leave ONLY through
-            // these user-click callbacks into the 3.4 presenter; composition,
+            // Phase 3.5 (behavior preserved): actions leave ONLY through these
+            // user-click callbacks into the 3.4 presenter; composition,
             // recomposition, resume, permission callbacks and recreation dispatch
             // NOTHING on their own. The state is the orchestrator's sanitized snapshot.
-            Column {
-                // Third field iteration (2026-10-23): DEBUG-ONLY on-screen diagnostics
-                // (FieldDiag-03) so the next phone retest needs NO ADB. Never rendered
-                // in release builds; reads typed state only, no control-flow effect.
-                if (FieldDiagnostics.isDebugBuild) {
+            RadioObserverTheme {
+            val destination = currentScreen.value
+            // One deterministic back policy for every destination (JVM-tested):
+            // details return to their parent tab, non-primary tabs return to Gözlem,
+            // Gözlem hands Back to the system.
+            BackHandler(enabled = AppNavigation.handlesBack(destination)) {
+                AppNavigation.onBack(destination)?.let { currentScreen.value = it }
+            }
+            Scaffold(
+                bottomBar = {
+                    if (AppNavigation.showsBottomBar(destination)) {
+                        MainBottomBar(
+                            currentTab = AppNavigation.currentTab(destination),
+                            onTabSelected = { tab ->
+                                currentScreen.value = AppNavigation.onTabSelected(destination, tab)
+                            },
+                        )
+                    }
+                },
+            ) { innerPadding ->
+            Column(modifier = Modifier.padding(innerPadding)) {
+                // FieldDiag-04 (2026-10-23): DEBUG-ONLY on-screen diagnostics, now
+                // HIDDEN BY DEFAULT. Visible ONLY when the build is debuggable AND
+                // the developer section was unlocked with seven version-label taps AND
+                // the user explicitly switched it on (pure, JVM-tested rule). Never
+                // rendered in release builds; reads typed state only, no control-flow
+                // effect, nothing persisted.
+                if (DeveloperDiagGate.isVisible(
+                        isDebugBuild = FieldDiagnostics.isDebugBuild,
+                        unlocked = diagGate.isUnlocked,
+                        userToggle = diagVisible.value,
+                    )
+                ) {
                     val s = controlUiState.value
                     FieldDiagnosticsPanel(
                         orchestratorEligible = observationSupervisor.isForegroundEligible,
@@ -216,50 +272,51 @@ class MainActivity : ComponentActivity() {
                 }
             Box(Modifier.weight(1f)) {
             when (val screen = currentScreen.value) {
-                is Screen.Home -> RadioObserverControlScreen(
-                    state = controlUiState.value,
-                    onStartBle = sessionPresenter::onUserStartBleTap,
-                    onStopBle = sessionPresenter::onUserStopBleTap,
-                    onStartWifi = sessionPresenter::onUserStartWifiTap,
-                    onStopWifi = sessionPresenter::onUserStopWifiTap,
-                    onOpenObservations = { currentScreen.value = Screen.Observations },
-                    onOpenHistory = { currentScreen.value = Screen.History },
-                    // 3.7 recovery actions: guarded, user-invoked ONLY; the controller
-                    // reports failure honestly (no success claim, no permission grant
-                    // before OS state confirms it).
-                    onOpenPermissionSettings = { permissionFlowController.openAppPermissionSettings() },
-                    onOpenLocationSettings = { permissionFlowController.openLocationSettings() },
-                    // Readiness recheck: refreshes status from CURRENT facts; never
-                    // prompts a dialog, never starts a session (two-tap rule intact).
-                    onRecheckBle = sessionPresenter::onUserRecheckBleTap,
-                    onRecheckWifi = sessionPresenter::onUserRecheckWifiTap,
-                )
-                is Screen.Observations -> {
-                    BackHandler { currentScreen.value = Screen.Home }
-                    ObservationsFeedScreen(
+                is TabScreen -> when (screen.tab) {
+                    AppTab.OBSERVATION -> RadioObserverControlScreen(
+                        state = controlUiState.value,
+                        onStartBle = sessionPresenter::onUserStartBleTap,
+                        onStopBle = sessionPresenter::onUserStopBleTap,
+                        onStartWifi = sessionPresenter::onUserStartWifiTap,
+                        onStopWifi = sessionPresenter::onUserStopWifiTap,
+                        // 3.7 recovery actions: guarded, user-invoked ONLY; the
+                        // controller reports failure honestly (no success claim, no
+                        // permission grant before OS state confirms it).
+                        onOpenPermissionSettings = { permissionFlowController.openAppPermissionSettings() },
+                        onOpenLocationSettings = { permissionFlowController.openLocationSettings() },
+                        // Readiness recheck: refreshes status from CURRENT facts; never
+                        // prompts a dialog, never starts a session (two-tap rule intact).
+                        onRecheckBle = sessionPresenter::onUserRecheckBleTap,
+                        onRecheckWifi = sessionPresenter::onUserRecheckWifiTap,
+                    )
+                    AppTab.FEED -> ObservationsFeedScreen(
                         state = controlUiState.value,
                         filter = feedFilter.value,
                         onFilterChange = { feedFilter.value = it },
                         onRowSelect = { rowId ->
-                            currentScreen.value = Screen.ObservationDetail(rowId)
+                            currentScreen.value = AppDestination.ObservationDetail(rowId)
                         },
-                        onBack = { currentScreen.value = Screen.Home },
                     )
-                }
-                is Screen.ObservationDetail -> {
-                    BackHandler { currentScreen.value = Screen.Observations }
-                    ObservationDetailScreen(
-                        state = controlUiState.value,
-                        rowId = screen.rowId,
-                        onBack = { currentScreen.value = Screen.Observations },
-                    )
-                }
-                is Screen.History -> {
-                    BackHandler { currentScreen.value = Screen.Home }
-                    HistoryScreen(
+                    AppTab.HISTORY -> HistoryScreen(
+                        // Browsing surface only: preferences live in Ayarlar, driven
+                        // by the SAME HistoryController state (single source of truth).
                         state = historyController.state.value,
                         filter = historyFilter.value,
                         onFilterChange = { historyFilter.value = it },
+                        onDeleteOne = { historyController.deleteOne(it) },
+                        onClearAll = { historyController.clearAll() },
+                        onDismissNotices = { historyController.dismissNotices() },
+                        onOpenDetail = { recordId ->
+                            currentScreen.value = AppDestination.HistoryDetail(recordId)
+                        },
+                        onOpenSettings = { currentScreen.value = TabScreen(AppTab.SETTINGS) },
+                    )
+                    AppTab.SETTINGS -> SettingsScreen(
+                        state = historyController.state.value,
+                        appVersion = appVersion,
+                        isDebugBuild = FieldDiagnostics.isDebugBuild,
+                        diagUnlocked = diagGate.isUnlocked,
+                        diagVisible = diagVisible.value,
                         onConsentChange = { consent ->
                             if (consent.recordingEnabled != historyController.state.value.consent.recordingEnabled) {
                                 historyController.setRecordingEnabled(consent.recordingEnabled)
@@ -269,26 +326,66 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         onRetentionChange = { historyController.setRetentionDays(it) },
-                        onDeleteOne = { historyController.deleteOne(it) },
                         onClearAll = { historyController.clearAll() },
-                        onDismissNotices = { historyController.dismissNotices() },
-                        onOpenDetail = { recordId ->
-                            currentScreen.value = Screen.HistoryDetail(recordId)
+                        onVersionTap = { diagGate.onVersionTap() },
+                        onDiagVisibilityChange = { visible ->
+                            diagVisible.value = visible
                         },
-                        onBack = { currentScreen.value = Screen.Home },
                     )
                 }
-                is Screen.HistoryDetail -> {
-                    BackHandler { currentScreen.value = Screen.History }
-                    HistoryDetailScreen(
-                        record = historyController.state.value.records
-                            .firstOrNull { it.id == screen.recordId },
-                        onBack = { currentScreen.value = Screen.History },
-                    )
-                }
+                is AppDestination.ObservationDetail -> ObservationDetailScreen(
+                    state = controlUiState.value,
+                    rowId = screen.rowId,
+                    onBack = { currentScreen.value = TabScreen(AppTab.FEED) },
+                )
+                is AppDestination.HistoryDetail -> HistoryDetailScreen(
+                    record = historyController.state.value.records
+                        .firstOrNull { it.id == screen.recordId },
+                    onBack = { currentScreen.value = TabScreen(AppTab.HISTORY) },
+                )
             }
             }
         }
     }
+    }
+    }
+    }
+
+    /** Four-tab Material 3 bottom bar. PURE navigation: a tab tap only changes the
+     *  destination — it never starts/stops a session, requests a permission or
+     *  refreshes scanning state (JVM-tested in AppNavigationTest). */
+    @Composable
+    private fun MainBottomBar(
+        currentTab: AppTab,
+        onTabSelected: (AppTab) -> Unit,
+    ) {
+        NavigationBar {
+            NavigationBarItem(
+                selected = currentTab == AppTab.OBSERVATION,
+                onClick = { onTabSelected(AppTab.OBSERVATION) },
+                icon = { Icon(Icons.Filled.Home, contentDescription = null) },
+                label = { Text(stringResource(R.string.tab_observation)) },
+            )
+            NavigationBarItem(
+                selected = currentTab == AppTab.FEED,
+                onClick = { onTabSelected(AppTab.FEED) },
+                icon = { Icon(Icons.Filled.List, contentDescription = null) },
+                label = { Text(stringResource(R.string.tab_feed)) },
+            )
+            NavigationBarItem(
+                selected = currentTab == AppTab.HISTORY,
+                onClick = { onTabSelected(AppTab.HISTORY) },
+                icon = { Icon(Icons.Filled.DateRange, contentDescription = null) },
+                label = { Text(stringResource(R.string.tab_history)) },
+            )
+            NavigationBarItem(
+                selected = currentTab == AppTab.SETTINGS,
+                onClick = { onTabSelected(AppTab.SETTINGS) },
+                icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
+                label = { Text(stringResource(R.string.tab_settings)) },
+            )
+        }
+    }
 }
-}
+
+

@@ -1,5 +1,6 @@
 package com.example.radioobserver.ui
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,6 +17,11 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -34,18 +40,18 @@ import com.example.radioobserver.core.radio.ui.RadioSessionUiStatus
 import com.example.radioobserver.core.radio.ui.SessionIssueKey
 
 /**
- * Phase 3.5 — Material 3 OBSERVATION CONTROL screen (Turkish).
+ * Post-roadmap professional UI iteration (developer-approved, 2026-10-23):
+ * compact, professional MATERIAL 3 OBSERVATION DASHBOARD (Turkish).
  *
- * A STATELESS renderer: all state arrives as the immutable sanitized [ObservationUiState]
- * (single source of truth: the 3.4 orchestrator); all actions leave ONLY through the
- * four explicit user callbacks (real button clicks in MainActivity wire them to the
- * 3.4 [com.example.radioobserver.session.ObservationSessionPresenter]). No session is
- * ever started from composition, recomposition, initialization effects or state
- * collection; enable/disable rules come from the host-tested pure
- * [ControlScreenProjection].
+ * Redesign of the Phase 3.5 screen: the oversized title + always-visible paragraph
+ * stack (phone screenshots) is replaced by a compact heading, a truthful session
+ * summary and the two control cards FIRST; the long educational/privacy copy moves
+ * into a collapsed, accessible "Bilgi ve gizlilik" disclosure. Feed/history entry is
+ * now the four-tab bottom bar (no ad-hoc buttons on the dashboard).
  *
- * Compile-gated only: real click delivery, TalkBack semantics, layout, font scaling and
- * dark mode on a device are UNVERIFIED in this device-free iteration.
+ * UNCHANGED FUNCTIONAL CONTRACT: a STATELESS renderer of the immutable sanitized
+ * [ObservationUiState]; actions leave ONLY through explicit user-tap callbacks.
+ * No session is ever started from composition, recomposition or navigation.
  */
 @Composable
 fun RadioObserverControlScreen(
@@ -54,39 +60,66 @@ fun RadioObserverControlScreen(
     onStopBle: () -> Unit,
     onStartWifi: () -> Unit,
     onStopWifi: () -> Unit,
-    onOpenObservations: () -> Unit = {},
-    onOpenHistory: () -> Unit = {},
     onOpenPermissionSettings: () -> Unit = {},
     onOpenLocationSettings: () -> Unit = {},
     onRecheckBle: () -> Unit = {},
     onRecheckWifi: () -> Unit = {},
 ) {
-    val openFeedA11y = stringResource(R.string.a11y_open_feed)
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(
-                text = stringResource(R.string.control_title),
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.semantics { heading() },
-            )
-            Text(
-                text = stringResource(R.string.home_intro),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Text(
-                text = stringResource(R.string.scope_note),
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Text(
-                text = stringResource(R.string.privacy_body),
-                style = MaterialTheme.typography.bodySmall,
-            )
+            // Compact branded heading: title + one-line subtitle, no paragraph stack.
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = stringResource(R.string.control_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.semantics { heading() },
+                )
+                Text(
+                    text = stringResource(R.string.dashboard_subtitle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            // Truthful summary chip: live observation count of the CURRENT session.
+            if (state.rows.isNotEmpty()) {
+                Text(
+                    text = pluralStringResource(
+                        R.plurals.observation_count,
+                        ControlScreenProjection.observationCount(state.rows),
+                        ControlScreenProjection.observationCount(state.rows)),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            } else {
+                Text(
+                    text = stringResource(R.string.empty_feed_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            // Permission guidance stays honest and contextual (unchanged copy).
+            if (state.locationAccess == LocationAccessUi.NOT_REQUESTED ||
+                state.locationAccess == LocationAccessUi.DENIED
+            ) {
+                Text(
+                    text = stringResource(R.string.precise_location_rationale),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            if (state.locationAccess == LocationAccessUi.APPROXIMATE_ONLY) {
+                Text(
+                    text = stringResource(R.string.approximate_only_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
 
             RadioControlCard(
                 title = stringResource(R.string.ble_card_title),
@@ -117,51 +150,57 @@ fun RadioObserverControlScreen(
                 onRecheck = onRecheckWifi,
             )
 
-            if (state.locationAccess == LocationAccessUi.NOT_REQUESTED ||
-                state.locationAccess == LocationAccessUi.DENIED
+            InfoDisclosure()
+        }
+    }
+}
+
+/**
+ * Collapsed-by-default accessible disclosure: the long educational and privacy copy
+ * (scope, temporary live observations, optional persisted history, background stop)
+ * stays available and truthful — without burying the Start controls below the fold.
+ */
+@Composable
+private fun InfoDisclosure() {
+    var expanded by remember { mutableStateOf(false) }
+    val expandA11y = stringResource(R.string.info_section_expand_a11y)
+    val collapseA11y = stringResource(R.string.info_section_collapse_a11y)
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = stringResource(R.string.precise_location_rationale),
-                    style = MaterialTheme.typography.bodySmall,
+                    text = stringResource(R.string.info_section_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier
+                        .weight(1f)
+                        .semantics { heading() },
                 )
+                OutlinedButton(
+                    onClick = { expanded = !expanded },
+                    modifier = Modifier
+                        .heightIn(min = 48.dp)
+                        .semantics {
+                            contentDescription = if (expanded) collapseA11y else expandA11y
+                        },
+                ) {
+                    Text(
+                        text = stringResource(
+                            if (expanded) R.string.info_section_collapse else R.string.info_section_expand
+                        ),
+                    )
+                }
             }
-            if (state.locationAccess == LocationAccessUi.APPROXIMATE_ONLY) {
-                Text(
-                    text = stringResource(R.string.approximate_only_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                )
+            AnimatedVisibility(visible = expanded) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.scope_note), style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.privacy_body), style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.background_stop_note), style = MaterialTheme.typography.bodySmall)
+                }
             }
-            if (ControlScreenProjection.showEmptyFeedNote(state)) {
-                Text(
-                    text = stringResource(R.string.empty_feed_note),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            } else if (state.rows.isNotEmpty()) {
-                Text(
-                    text = pluralStringResource(
-                        R.plurals.observation_count,
-                        ControlScreenProjection.observationCount(state.rows),
-                        ControlScreenProjection.observationCount(state.rows)),
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-            Text(
-                text = stringResource(R.string.background_stop_note),
-                style = MaterialTheme.typography.bodySmall,
-            )
-            // Phase 3.6: read-only feed entry. Pure navigation: this callback changes
-            // NO session, permission or scanning state — it only switches destination.
-            OutlinedButton(
-                onClick = onOpenObservations,
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .semantics { contentDescription = openFeedA11y },
-            ) { Text(stringResource(R.string.open_feed_button)) }
-            // Optional local history entry (post-roadmap feature): pure navigation.
-            OutlinedButton(
-                onClick = onOpenHistory,
-                modifier = Modifier.heightIn(min = 48.dp),
-            ) { Text(stringResource(R.string.open_history_button)) }
         }
     }
 }
@@ -184,9 +223,8 @@ private fun RadioControlCard(
 ) {
     val statusLabel = statusLabel(session.status)
     val limitSeconds = ControlScreenProjection.sessionLimitSeconds(session)
-    // 3.9 fix: the merged row description must carry the SAME facts the sighted row
-    // shows. Previously the session limit was visible but silently dropped from
-    // accessibility semantics.
+    // 3.9 fix (preserved): the merged row description carries the SAME facts the
+    // sighted row shows, including the session limit.
     val statusText = stringResource(R.string.a11y_status_format, statusLabel) +
         (limitSeconds?.let { ", " + stringResource(R.string.session_limit_format, it) } ?: "")
     // A11y descriptions are composed OUTSIDE semantics{} (non-composable context):
@@ -224,9 +262,8 @@ private fun RadioControlCard(
                     color = MaterialTheme.colorScheme.error,
                 )
             }
-            // Phase 3.7: at most ONE context-appropriate recovery action, derived by the
-            // host-tested pure projection from CURRENT state. Clicks only — recomposition
-            // dispatches nothing; the buttons never claim a grant or enabled hardware.
+            // Phase 3.7 (preserved): at most ONE context-appropriate recovery action,
+            // derived by the host-tested pure projection from CURRENT state.
             RecoverySection(
                 recovery = RecoveryStatusProjection.recoveryFor(session, locationAccess),
                 onOpenPermissionSettings = onOpenPermissionSettings,

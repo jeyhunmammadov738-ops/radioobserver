@@ -20,11 +20,13 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.radioobserver.R
 import com.example.radioobserver.core.radio.model.ObservationConfidence
@@ -42,17 +44,16 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Phase 3.6 — sanitized, EPHEMERAL, read-only observation feed + detail (Turkish).
+ * Phase 3.6 feed + detail, professionally restyled in the post-roadmap UI iteration
+ * (developer-approved, 2026-10-23). Sanitized, EPHEMERAL, read-only behavior is
+ * UNCHANGED: stateless renderers over the CURRENT sanitized [ObservationUiState];
+ * filtering/selection/navigation dispatch NOTHING. Rows resolve via the pure
+ * [ObservationFeedProjection]; disposed/evicted/replaced rows render the honest
+ * unavailable state. The pipeline's 200-row bound / 15-min TTL stay authoritative.
  *
- * STATELESS renderers over the CURRENT sanitized [ObservationUiState] (the 3.4
- * orchestrator is the only producer). Navigation, filtering and selection dispatch
- * NOTHING: no scan, no permission request, no session change. Rows resolve via the
- * pure [ObservationFeedProjection] against the live state, so disposed/evicted/replaced
- * rows render the honest unavailable state instead of ghost data. The pipeline's
- * 200-row bound / 15-min TTL stay authoritative (no second store exists here).
- *
- * Compile-gated only: real click delivery, TalkBack, layout and font scaling are
- * UNVERIFIED in this device-free iteration.
+ * Visual changes only: consistent row anatomy (safe label, source badge, freshness
+ * badge, last-seen time), refined chips/spacing, grouped detail sections. Source-level
+ * design: TalkBack, clipping and font-scale behavior require the phone retest.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -61,35 +62,36 @@ fun ObservationsFeedScreen(
     filter: FeedFilter,
     onFilterChange: (FeedFilter) -> Unit,
     onRowSelect: (String) -> Unit,
-    onBack: () -> Unit,
 ) {
     val rows = ObservationFeedProjection.rowsFor(state, filter)
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            Row(
+            // Compact tab heading (no paragraph stack; the tab bar owns navigation).
+            Text(
+                text = stringResource(R.string.feed_title),
+                style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.feed_title),
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier
-                        .weight(1f)
-                        .semantics { heading() },
-                )
-                OutlinedButton(
-                    onClick = onBack,
-                    modifier = Modifier.heightIn(min = 48.dp),
-                ) { Text(stringResource(R.string.feed_back)) }
-            }
-            // 3.9 fix: FlowRow wraps chips instead of overflowing at large font
-            // scales; each chip keeps an explicit 48dp minimum touch target.
+                    .padding(start = 16.dp, top = 16.dp, end = 16.dp)
+                    .semantics { heading() },
+            )
+            // Session summary: honest, authoritative count or the empty-session note.
+            Text(
+                text = if (state.rows.isNotEmpty()) {
+                    val count = ControlScreenProjection.observationCount(state.rows)
+                    androidx.compose.ui.res.pluralStringResource(
+                        R.plurals.observation_count, count, count)
+                } else stringResource(R.string.feed_empty_no_session),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+            // 3.9 fix (preserved): FlowRow wraps chips instead of overflowing at large
+            // font scales; 48dp minimum touch targets; no overlap with the list below.
             FlowRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 FilterChip(
@@ -114,7 +116,8 @@ fun ObservationsFeedScreen(
             when (ObservationFeedProjection.emptyKind(state, filter)) {
                 null -> LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(rows, key = { it.rowId }) { row ->
@@ -138,7 +141,24 @@ private fun EmptyState(textRes: Int) {
     )
 }
 
-/** One sanitized feed row: source word, name/type, freshness word, last-seen. */
+/** Small tonal badge; NEVER the only carrier of meaning (the same word also appears
+ *  in the row's contentDescription for screen readers). */
+@Composable
+private fun Badge(text: String) {
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = MaterialTheme.shapes.small,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+        )
+    }
+}
+
+/** One sanitized feed row: safe label, source badge, freshness badge, last-seen. */
 @Composable
 private fun ObservationRow(row: ObservationRowUi, onSelect: () -> Unit) {
     val source = radioWord(row.radio)
@@ -151,15 +171,27 @@ private fun ObservationRow(row: ObservationRowUi, onSelect: () -> Unit) {
             .semantics { contentDescription = rowA11y },
         onClick = onSelect,
     ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(text = name, style = MaterialTheme.typography.titleMedium)
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(text = source, style = MaterialTheme.typography.bodySmall)
-                Text(text = fresh, style = MaterialTheme.typography.bodySmall)
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
                 Text(
                     text = lastSeenText(row.lastSeenAtEpochMs),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Badge(source)
+                Badge(fresh)
             }
         }
     }
@@ -188,6 +220,7 @@ fun ObservationDetailScreen(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = stringResource(R.string.detail_title),
@@ -207,25 +240,41 @@ fun ObservationDetailScreen(
                     style = MaterialTheme.typography.bodyMedium,
                 )
             } else {
-                DetailCard(detail)
+                DetailContent(detail)
             }
         }
     }
 }
 
+/** Grouped, readable presentation of the SAME sanitized fields (no dense dump). */
 @Composable
-private fun DetailCard(row: ObservationRowUi) {
+private fun DetailContent(row: ObservationRowUi) {
     val unknown = stringResource(R.string.value_not_available)
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 text = row.name ?: stringResource(R.string.row_unnamed),
                 style = MaterialTheme.typography.titleLarge,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
             )
+            DetailSectionTitle(R.string.detail_section_source_time)
             DetailField(stringResource(R.string.detail_field_source), radioWord(row.radio))
-            DetailField(stringResource(R.string.detail_field_confidence), confidenceWord(row.confidence))
+            DetailField(stringResource(R.string.detail_field_last_seen), lastSeenText(row.lastSeenAtEpochMs))
+            DetailField(stringResource(R.string.detail_field_row_label), row.rowId)
+        }
+    }
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            DetailSectionTitle(R.string.detail_section_signal)
             DetailField(stringResource(R.string.detail_field_signal), signalWord(row.signalBucket))
             DetailField(stringResource(R.string.detail_field_freshness), freshnessWord(row.freshness))
+            DetailField(stringResource(R.string.detail_field_confidence), confidenceWord(row.confidence))
+        }
+    }
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            DetailSectionTitle(R.string.detail_section_hints)
             DetailField(
                 stringResource(R.string.detail_field_manufacturer),
                 row.manufacturerHint ?: unknown)
@@ -234,24 +283,28 @@ private fun DetailCard(row: ObservationRowUi) {
                 stringResource(R.string.detail_field_locally_administered),
                 if (row.locallyAdministered) stringResource(R.string.value_yes)
                 else stringResource(R.string.value_no))
-            DetailField(stringResource(R.string.detail_field_last_seen), lastSeenText(row.lastSeenAtEpochMs))
-            DetailField(stringResource(R.string.detail_field_row_label), row.rowId)
-            Text(
-                text = stringResource(R.string.confidence_caution),
-                style = MaterialTheme.typography.bodySmall,
-            )
-            Text(
-                text = stringResource(R.string.signal_qualitative_note),
-                style = MaterialTheme.typography.bodySmall,
-            )
+        }
+    }
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            DetailSectionTitle(R.string.detail_section_limits)
+            Text(stringResource(R.string.confidence_caution), style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(R.string.signal_qualitative_note), style = MaterialTheme.typography.bodySmall)
             if (row.radio == RadioType.WIFI) {
-                Text(
-                    text = stringResource(R.string.wifi_passive_note),
-                    style = MaterialTheme.typography.bodySmall,
-                )
+                Text(stringResource(R.string.wifi_passive_note), style = MaterialTheme.typography.bodySmall)
             }
         }
     }
+}
+
+@Composable
+private fun DetailSectionTitle(res: Int) {
+    Text(
+        text = stringResource(res),
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.semantics { heading() },
+    )
 }
 
 @Composable

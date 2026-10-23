@@ -318,7 +318,20 @@ Material 3 History/detail screens (recording OFF by default; separate Wi-Fi-name
 consent; filters; per-record delete; confirmed Clear All; count; retention chips).
 Host-verified this run: core 266/266 (24 new), app 6/6 (2 new), compile OK,
 assembleDebug OK, lintDebug 0 errors/16 warnings. Real-device persistence
-UNVERIFIED until retest. Details: docs/optional-local-history-implementation.md. Details: docs/field-test-start-permission-2026-10-23.md (fifth
+UNVERIFIED until retest. Details: docs/optional-local-history-implementation.md.
+
+POST-ROADMAP, SEPARATELY APPROVED UI ITERATION (2026-10-23): Professional Material 3
+redesign + four-tab bottom navigation (Gözlem, Gözlemler, Geçmiş, Ayarlar) + hidden
+FieldDiag-04 (docs/professional-ui-navigation-redesign.md). No phase created, no task
+reopened. New indigo/violet light+dark theme (no new dependency); pure JVM-tested
+navigation/back policy (AppNavigationTest 9) and DEBUG-only diag-visibility gate
+(DeveloperDiagGateTest 8; seven version-label taps, hidden by default, nothing
+persisted); Geçmiş became browse-only with ALL history preferences moved to Ayarlar
+(same HistoryController state); dashboard compacted with a collapsed info disclosure;
+feed rows grouped with tonal source/freshness badges; detail screens grouped into
+sections; four dead string resources removed. Core 266/266, app 23/23, compile OK,
+assembleDebug OK, lintDebug 0 errors/16 warnings (exact baseline). Phone retest
+required. Details: docs/professional-ui-navigation-redesign.md. Details: docs/field-test-start-permission-2026-10-23.md (fifth
 section).
 
 ## Phase 3 — Friendly Compose UI & Live Observation State (COMPLETE: 10/10 done)
