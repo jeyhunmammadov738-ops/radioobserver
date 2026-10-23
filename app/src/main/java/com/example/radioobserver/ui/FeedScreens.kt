@@ -40,6 +40,20 @@ import com.example.radioobserver.core.radio.ui.ObservationFeedProjection.FeedEmp
 import com.example.radioobserver.core.radio.ui.ObservationFeedProjection.FeedFilter
 import com.example.radioobserver.core.radio.ui.ObservationRowUi
 import com.example.radioobserver.core.radio.ui.ObservationUiState
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Fill
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import com.example.radioobserver.core.radio.ui.LiveViewKind
+import com.example.radioobserver.core.radio.ui.LiveViewProjection
 import com.example.radioobserver.ui.components.CompactInfoRow
 import com.example.radioobserver.ui.DetailTime
 import com.example.radioobserver.ui.ManufacturerPresentation
@@ -67,6 +81,11 @@ fun ObservationsFeedScreen(
     state: ObservationUiState,
     filter: FeedFilter,
     onFilterChange: (FeedFilter) -> Unit,
+    // WORKSTREAM 01: the selected live presentation is a UI preference ONLY —
+    // it dispatches NOTHING (no scan, permission, session or history action) and
+    // is never persisted. Short-lived Activity state, dies with the process.
+    viewKind: LiveViewKind,
+    onViewKindChange: (LiveViewKind) -> Unit,
     onRowSelect: (String) -> Unit,
 ) {
     val rows = ObservationFeedProjection.rowsFor(state, filter)
@@ -89,6 +108,38 @@ fun ObservationsFeedScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = Spacing.xs),
                 )
+            }
+            // WORKSTREAM 01 view switcher: Liste / Radar / Zaman tüneli. Same
+            // 48dp-target FilterChip pattern as the source filters; pure UI state.
+            Column(modifier = Modifier.padding(horizontal = Spacing.lg)) {
+                Text(
+                    text = stringResource(R.string.view_label),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .padding(top = Spacing.xs)
+                        .semantics { heading() },
+                )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    FilterChip(
+                        selected = viewKind == LiveViewKind.LIST,
+                        onClick = { onViewKindChange(LiveViewKind.LIST) },
+                        label = { Text(stringResource(R.string.view_list)) },
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    )
+                    FilterChip(
+                        selected = viewKind == LiveViewKind.RADAR,
+                        onClick = { onViewKindChange(LiveViewKind.RADAR) },
+                        label = { Text(stringResource(R.string.view_radar)) },
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    )
+                    FilterChip(
+                        selected = viewKind == LiveViewKind.TIMELINE,
+                        onClick = { onViewKindChange(LiveViewKind.TIMELINE) },
+                        label = { Text(stringResource(R.string.view_timeline)) },
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    )
+                }
             }
             // Filter chips: FlowRow wraps at large font scales; 48dp targets; the
             // list below has its own top padding so chips never overlap rows.
@@ -117,16 +168,30 @@ fun ObservationsFeedScreen(
                     modifier = Modifier.heightIn(min = 48.dp),
                 )
             }
+            // The SAME honest empty taxonomy applies to ALL three views: a view
+            // switch never invents content and never changes eligibility.
             when (ObservationFeedProjection.emptyKind(state, filter)) {
-                null -> LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                        start = Spacing.lg, end = Spacing.lg, top = Spacing.sm, bottom = Spacing.lg),
-                    verticalArrangement = Arrangement.spacedBy(Spacing.sm),
-                ) {
-                    items(rows, key = { it.rowId }) { row ->
-                        ObservationRow(row = row, onSelect = { onRowSelect(row.rowId) })
+                null -> when (viewKind) {
+                    LiveViewKind.LIST -> LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                            start = Spacing.lg, end = Spacing.lg, top = Spacing.sm, bottom = Spacing.lg),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    ) {
+                        items(rows, key = { it.rowId }) { row ->
+                            ObservationRow(row = row, onSelect = { onRowSelect(row.rowId) })
+                        }
                     }
+                    LiveViewKind.RADAR -> RadarView(
+                        state = state,
+                        rows = rows,
+                        onRowSelect = onRowSelect,
+                    )
+                    LiveViewKind.TIMELINE -> TimelineView(
+                        state = state,
+                        filter = filter,
+                        onRowSelect = onRowSelect,
+                    )
                 }
                 FeedEmptyKind.SESSION_ACTIVE_NO_OBSERVATIONS -> EmptyState(stringResource(R.string.empty_feed_note))
                 FeedEmptyKind.NO_SESSION_NO_OBSERVATIONS -> EmptyState(stringResource(R.string.feed_empty_no_session))
@@ -388,3 +453,267 @@ private fun lastSeenText(epochMs: Long): String {
 
 @Composable
 private fun timeText(epochMs: Long): String = DetailTime.plainClockText(epochMs)
+
+/**
+ * WORKSTREAM 01 — RADAR: abstract, honest signal-category scheme over the CURRENT
+ * sanitized rows. NOT a location, compass or distance display: rings are the
+ * verified SignalBucket taxonomy, angles are deterministic rowId-derived visual
+ * decoration, and the mandatory honesty copy sits above the canvas. Cached Wi-Fi
+ * stays visibly "Eski" (hollow dots). Dots are tappable; the adjacent list makes
+ * every item reachable WITHOUT the canvas, so nothing is dot-only.
+ */
+@Composable
+private fun RadarView(
+    state: ObservationUiState,
+    rows: List<ObservationRowUi>,
+    onRowSelect: (String) -> Unit,
+) {
+    val projection = LiveViewProjection.radarProjection(
+        state, ObservationFeedProjection.FeedFilter.ALL,
+    )
+    val rowsForRadar = rows // same filtered membership as Liste (host-tested)
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Prominent, accessible honesty copy — always visible, both semantics and text.
+        Text(
+            text = stringResource(R.string.radar_honesty_note),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier
+                .padding(horizontal = Spacing.lg, vertical = Spacing.xs)
+                .semantics { heading() },
+        )
+        if (projection.allSignalUnavailable) {
+            Text(
+                text = stringResource(R.string.radar_all_unknown_note),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.xs),
+            )
+        }
+        // Bounded schematic canvas (aspect-locked square; no sweep animation that
+        // could imply a live physical scan).
+        val bleColor = MaterialTheme.colorScheme.primary
+        val wifiColor = MaterialTheme.colorScheme.tertiary
+        val ringColor = MaterialTheme.colorScheme.onSurfaceVariant
+        val dotRadiusPx = with(LocalDensity.current) { 10.dp.toPx() }
+        val tapRadiusPx = with(LocalDensity.current) { 28.dp.toPx() }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.lg)
+                .aspectRatio(1f)
+                // Dot taps resolve the SAME rowId the list uses; a miss does nothing.
+                .pointerInput(projection) {
+                    detectTapGestures { tap ->
+                        val center = Offset(size.width / 2f, size.height / 2f)
+                        val maxR = (minOf(size.width, size.height) / 2f).toFloat()
+                        projection.dots.firstOrNull { dot ->
+                            val angleRad = Math.toRadians(dot.angleDegrees)
+                            // Schematic coordinates: 0 degrees is up; purely visual.
+                            val pos = Offset(
+                                x = center.x + (maxR * dot.radiusFraction * Math.sin(angleRad)).toFloat(),
+                                y = center.y - (maxR * dot.radiusFraction * Math.cos(angleRad)).toFloat(),
+                            )
+                            (tap - pos).getDistance() <= tapRadiusPx
+                        }?.let { dot -> onRowSelect(dot.rowId) }
+                    }
+                },
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val center = Offset(size.width / 2f, size.height / 2f)
+                val maxR = size.minDimension / 2f
+                // Four abstract ring bands (SignalBucket taxonomy), gap included.
+                val bands = LiveViewProjection.RING_ORDER.size
+                for (i in 0 until bands) {
+                    drawCircle(
+                        color = ringColor.copy(alpha = 0.35f),
+                        radius = maxR * ((i + 1).toFloat() / bands),
+                        center = center,
+                        style = Stroke(width = 2f),
+                    )
+                }
+                for (dot in projection.dots) {
+                    val angleRad = Math.toRadians(dot.angleDegrees)
+                    val pos = Offset(
+                        x = center.x + (maxR * dot.radiusFraction * Math.sin(angleRad)).toFloat(),
+                        y = center.y - (maxR * dot.radiusFraction * Math.cos(angleRad)).toFloat(),
+                    )
+                    val color = if (dot.radio == RadioType.BLE) bleColor else wifiColor
+                    val hollow = dot.freshness == FreshnessState.STALE
+                    if (dot.radio == RadioType.WIFI) {
+                        // Wi-Fi: rounded square so the two source types differ by
+                        // SHAPE as well as color (never color alone).
+                        drawRoundRect(
+                            color = color,
+                            topLeft = Offset(pos.x - dotRadiusPx, pos.y - dotRadiusPx),
+                            size = Size(dotRadiusPx * 2, dotRadiusPx * 2),
+                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(dotRadiusPx / 2),
+                            style = if (hollow) Stroke(width = 3f) else Fill,
+                        )
+                    } else {
+                        drawCircle(
+                            color = color,
+                            radius = dotRadiusPx,
+                            center = pos,
+                            style = if (hollow) Stroke(width = 3f) else Fill,
+                        )
+                    }
+                }
+            }
+        }
+        // Legend: taxonomy + shape + freshness provenance, all in words.
+        Column(modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.xs)) {
+            Text(
+                text = stringResource(R.string.radar_legend_rings),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = stringResource(R.string.radar_legend_style),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = stringResource(R.string.radar_legend_center),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (projection.overflowCount > 0) {
+                Text(
+                    text = pluralStringResource(
+                        R.plurals.radar_overflow_note, projection.overflowCount, projection.overflowCount),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        // Adjacent accessible list: EVERY filtered row (including overflowed ones)
+        // stays reachable without the canvas. Same keys, same detail navigation.
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                start = Spacing.lg, end = Spacing.lg, top = Spacing.sm, bottom = Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+        ) {
+            items(rowsForRadar, key = { it.rowId }) { row ->
+                RadarListRow(row = row, onSelect = { onRowSelect(row.rowId) })
+            }
+        }
+    }
+}
+
+/** Compact, fully labeled radar-list row: name, source, signal word, last seen. */
+@Composable
+private fun RadarListRow(row: ObservationRowUi, onSelect: () -> Unit) {
+    val name = row.name ?: stringResource(R.string.row_unnamed)
+    val a11y = stringResource(
+        R.string.a11y_row_format, name, radioWord(row.radio),
+        stringResource(
+            when (row.freshness) {
+                FreshnessState.FRESH -> R.string.freshness_fresh
+                FreshnessState.STALE -> R.string.freshness_stale
+                FreshnessState.UNKNOWN -> R.string.freshness_unknown
+            },
+        ),
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clickable(onClick = onSelect)
+            .semantics { contentDescription = a11y }
+            .padding(horizontal = Spacing.sm, vertical = Spacing.xs),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SourceIcon(radio = row.radio)
+        Text(
+            text = name,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = DetailTime.plainClockText(row.lastSeenAtEpochMs),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * WORKSTREAM 01 — TIMELINE: session-local chronology derived ONLY from the
+ * sanitized rows' real last-seen wall clocks (no first-seen field exists and none
+ * is invented; ordering + tie-break are host-tested). Derives from the CURRENT
+ * state, so disposal/TTL/eviction empty it automatically; nothing is persisted.
+ */
+@Composable
+private fun TimelineView(
+    state: ObservationUiState,
+    filter: FeedFilter,
+    onRowSelect: (String) -> Unit,
+) {
+    val entries = LiveViewProjection.timelineProjection(state, filter)
+    Column(modifier = Modifier.fillMaxSize()) {
+        Text(
+            text = stringResource(R.string.timeline_note),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.xs),
+        )
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                start = Spacing.lg, end = Spacing.lg, top = Spacing.sm, bottom = Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+        ) {
+            items(entries, key = { it.rowId }) { entry ->
+                TimelineRow(entry = entry, onSelect = { onRowSelect(entry.rowId) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun TimelineRow(entry: LiveViewProjection.TimelineEntry, onSelect: () -> Unit) {
+    val name = entry.name ?: stringResource(R.string.row_unnamed)
+    val fresh = stringResource(
+        when (entry.freshness) {
+            FreshnessState.FRESH -> R.string.freshness_fresh
+            FreshnessState.STALE -> R.string.freshness_stale
+            FreshnessState.UNKNOWN -> R.string.freshness_unknown
+        },
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clickable(onClick = onSelect)
+            .semantics { contentDescription = "$name, $fresh" }
+            .padding(horizontal = Spacing.sm, vertical = Spacing.xs),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = DetailTime.plainClockText(entry.lastSeenAtEpochMs),
+            style = MaterialTheme.typography.labelLarge,
+            modifier = Modifier.width(64.dp),
+        )
+        SourceIcon(radio = entry.radio)
+        Text(
+            text = name,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = fresh,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}

@@ -364,7 +364,18 @@ core classifier untouched). (C) live-detail last-seen label/value duplication re
 (pure DetailTime) and duplicated signal caveat deduplicated (distinct recorded-time
 and privacy warnings preserved). New tests: ManufacturerBleSentinelTest (4),
 DetailTimeTest (2). Core 266/266, app 45/45, lint 0 errors/15 warnings. DEBUG APK
-only. Phone retest required. Details: docs/field-test-start-permission-2026-10-23.md (fifth
+only. Phone retest required.
+
+POST-ROADMAP WORKSTREAM 01 (2026-10-23, developer-approved): live observation views
+(docs/workstream-01-live-views.md). One pure projection source
+(core LiveViewProjection) drives three switchable Gözlemler presentations — Liste
+(unchanged feed), Radar (abstract signal-category rings; deterministic rowId-derived
+visual placement; mandatory 'yön veya mesafe göstermez' copy; bounded canvas with
+honest overflow; adjacent accessible list), Zaman tüneli (session-local last-seen
+chronology; no fabricated first-seen; stable rowId tie-break). Same sanitized state,
+same empty taxonomy, same detail navigation; view choice is non-persisted UI state
+dispatching nothing. 12 new core regressions (278/278 core, 45/45 app, lint 0/15).
+DEBUG APK only. Phone retest required. Details: docs/field-test-start-permission-2026-10-23.md (fifth
 section).
 
 ## Phase 3 — Friendly Compose UI & Live Observation State (COMPLETE: 10/10 done)

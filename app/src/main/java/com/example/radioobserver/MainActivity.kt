@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.res.stringResource
 import com.example.radioobserver.R
+import com.example.radioobserver.core.radio.ui.LiveViewKind
 import com.example.radioobserver.core.radio.ui.ObservationFeedProjection.FeedFilter
 import com.example.radioobserver.ui.ObservationDetailScreen
 import com.example.radioobserver.ui.ObservationsFeedScreen
@@ -103,6 +104,9 @@ class MainActivity : ComponentActivity() {
     // (JVM-tested policy in AppNavigation). Dies with the Activity.
     private val currentScreen = mutableStateOf<AppDestination>(TabScreen(AppTab.OBSERVATION))
     private val feedFilter = mutableStateOf(FeedFilter.ALL)
+    // WORKSTREAM 01: selected live view (Liste/Radar/Zaman tüneli) — UI preference
+    // ONLY; never persisted, dispatches nothing, dies with the Activity.
+    private val feedView = mutableStateOf(LiveViewKind.LIST)
     private val historyFilter = mutableStateOf(HistoryFilter.ALL)
 
     // DEBUG-only, hidden-by-default FieldDiag-04 visibility (post-roadmap policy):
@@ -293,6 +297,8 @@ class MainActivity : ComponentActivity() {
                         state = controlUiState.value,
                         filter = feedFilter.value,
                         onFilterChange = { feedFilter.value = it },
+                        viewKind = feedView.value,
+                        onViewKindChange = { feedView.value = it },
                         onRowSelect = { rowId ->
                             currentScreen.value = AppDestination.ObservationDetail(rowId)
                         },

@@ -48,6 +48,22 @@
     <string name="diag_toggle_a11y">Tanılama panelini göster veya gizle</string>
     <string name="diag_hint">Bu bölüm yalnızca hata ayıklama sürümünde görünür. Tanılama verileri bellekte tutulur; diske yazılmaz, yüklenmez ve geçmişe karışmaz.</string>
 
+    <!-- Workstream 01 (2026-10-23): canli gorunumler (Liste / Radar / Zaman tuneli) -->
+    <string name="view_label">Görünüm</string>
+    <string name="view_list">Liste</string>
+    <string name="view_radar">Radar</string>
+    <string name="view_timeline">Zaman tüneli</string>
+    <string name="radar_honesty_note">Şematik sinyal görünümü — yön veya mesafe göstermez.</string>
+    <string name="radar_legend_rings">İçten dışa halkalar: Çok yakın, Yakın, Uzak, Sinyal bilgisi yok</string>
+    <string name="radar_legend_style">Dolu nokta: güncel kaynak. Boş (çerçeveli) nokta: önbellekten geldiği için Eski.</string>
+    <string name="radar_legend_center">Merkez bir konum veya cihaz değildir; yalnızca şemanın ortasıdır.</string>
+    <plurals name="radar_overflow_note">
+        <item quantity="one">%1$d kaynak daha var; şema sınırlı olduğu için listede gösteriliyor.</item>
+        <item quantity="other">%1$d kaynak daha var; şema sınırlı olduğu için listede gösteriliyor.</item>
+    </plurals>
+    <string name="radar_all_unknown_note">Hiçbir kaynağın sinyal kategorisi bilinmiyor; halkalar bir yakınlık anlamı taşımaz.</string>
+    <string name="timeline_note">Bu zaman tüneli yalnızca bu oturuma aittir; sıralama son görülme saatine göredir. İlk görülme zamanı ayrı tutulmaz; oturum sona erince liste boşalır.</string>
+
     <!-- Final polish (2026-10-23): dogal Turkce teknik metinler -->
     <string name="manufacturer_unavailable">Üretici belirlenemedi</string>
     <string name="manufacturer_local_address_explanation">Yerel olarak atanmış Wi-Fi adresinden güvenilir üretici bilgisi çıkarılamıyor.</string>
