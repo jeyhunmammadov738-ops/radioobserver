@@ -68,6 +68,14 @@ enum class SessionIssueKey {
     HARDWARE_UNSUPPORTED,
     /** Host activity lost RESUMED; both radios' sessions terminate (never auto-resume). */
     FOREGROUND_LOST,
+    /**
+     * Phase 3.10 field fix (2026-10-23): a START attempt was rejected because the app
+     * was not in the foreground-eligible (RESUMED) state at tap time. This is TRANSIENT
+     * tap-time feedback, never a session stop and never permanent unavailability:
+     * nothing was observing, so nothing can truthfully be "stopped". It must be shown
+     * with the truthful non-active status (e.g. IDLE) and an actionable retry hint.
+     */
+    NOT_ELIGIBLE,
     INTERNAL_ERROR,
 }
 

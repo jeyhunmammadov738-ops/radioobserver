@@ -74,6 +74,11 @@ object RecoveryStatusProjection {
                 SessionIssueKey.HARDWARE_UNSUPPORTED, null -> null
                 // Terminal/foreground issues are not readiness problems to "fix":
                 SessionIssueKey.FOREGROUND_LOST, SessionIssueKey.INTERNAL_ERROR -> null
+            // Field fix (2026-10-23): transient tap-time ineligibility is not a
+            // readiness problem; the typed issue text itself is the honest retry hint.
+            // Unreachable here in practice (published with IDLE status), kept explicit
+            // so the mapping stays total and non-fabricating.
+            SessionIssueKey.NOT_ELIGIBLE -> null
             }
             // Idle/checking/finished states: controls already truthful; never request
             // anything uninvited (NOT_REQUESTED permission is handled by the Start tap

@@ -48,6 +48,7 @@
     <string name="issue_scan_throttled">Sistem taramayı geçici olarak sınırladı</string>
     <string name="issue_hardware_unsupported">Bu cihaz gerekli donanımı desteklemiyor</string>
     <string name="issue_foreground_lost">Ekrandan ayrıldığınız için durduruldu</string>
+    <string name="issue_not_eligible">Şu anda başlatılamadı. Uygulama ekranda etkinken Başlat düğmesine tekrar dokunun.</string>
     <string name="issue_internal_error">Beklenmeyen bir hata oluştu</string>
 
     <!-- Summary / session bound (from authoritative state only) -->

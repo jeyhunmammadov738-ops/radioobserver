@@ -217,6 +217,15 @@ operation OFF; no manifest permission additions yet.
 
 Current focus: none — Phases 1-3 complete (5/5, 8/8, 10/10). Any further work requires a new authorized roadmap.
 
+Post-handover field finding (2026-10-23): first real-phone test (MIUI) surfaced a
+truthfulness defect — transient foreground-gate rejection of a Start tap rendered a
+permanent-looking dead end ("Kullanılamıyor" + "Ekrandan ayrıldığınız için
+durduruldu") though nothing was ever observed. Narrow fix: typed
+SessionIssueKey.NOT_ELIGIBLE with truthful IDLE status + retry hint; real terminal
+history preserved; 4 new JVM tests. Fresh gates: 227/227, lint 0 errors/15
+warnings, APK identity unchanged. Details: docs/field-test-blocked-observation-2026-10-23.md.
+Roadmap checkboxes NOT reopened; real-device re-test pending.
+
 ## Phase 3 — Friendly Compose UI & Live Observation State (COMPLETE: 10/10 done)
 
 Detailed proposal: `docs/phase3-proposal.md`. Developer authorization (2026-10-20): the

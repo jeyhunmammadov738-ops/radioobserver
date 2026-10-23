@@ -12,6 +12,7 @@ import com.example.radioobserver.core.radio.model.RadioType
 import com.example.radioobserver.core.radio.pipeline.ObservationPipeline
 import com.example.radioobserver.core.radio.ui.ObservationUiMapper
 import com.example.radioobserver.core.radio.ui.ObservationUiState
+import com.example.radioobserver.core.radio.ui.RadioSessionUiState
 import com.example.radioobserver.core.radio.ui.RadioSessionUiStatus
 import com.example.radioobserver.core.radio.ui.SessionIssueKey
 
@@ -117,10 +118,16 @@ class ObservationSessionOrchestrator(
             return StartAttempt.Blocked(radio, issue)
         }
         // Foreground gate, re-checked at the actual start boundary (time-of-use).
+        // Field fix (2026-10-23): this rejection is TRANSIENT tap-time feedback, NOT a
+        // session outcome. Publishing BLOCKED + FOREGROUND_LOST here fabricated
+        // "unavailable + stopped because you left the screen" for a start that never
+        // happened (first real-phone field failure on MIUI: dead-end cards, no working
+        // observation). An IDLE radio now keeps its truthful idle status and gains only
+        // the typed retry hint; a radio with REAL terminal history (STOPPED/TIMED_OUT/
+        // ERROR from an actual session) keeps that truthful history untouched.
         if (!authorization.foregroundEligible || !supervisor.isForegroundEligible) {
-            publish(withStatus(radio, RadioSessionUiStatus.BLOCKED,
-                SessionIssueKey.FOREGROUND_LOST))
-            return StartAttempt.Blocked(radio, SessionIssueKey.FOREGROUND_LOST)
+            publishNotEligibleIfIdle(radio, session)
+            return StartAttempt.Blocked(radio, SessionIssueKey.NOT_ELIGIBLE)
         }
 
         val generation = if (radio == RadioType.BLE) ++bleGeneration else ++wifiGeneration
@@ -135,6 +142,13 @@ class ObservationSessionOrchestrator(
                 StartAttempt.Started(radio)
             }
             is SourceStartResult.Refused -> {
+                // Field fix (2026-10-23): the source's own eligibility re-gate refusal is
+                // the same TRANSIENT condition as the start-boundary gate above; it must
+                // never be rendered as a stopped/unavailable session either.
+                if (result.error is ObservationError.ForegroundIneligible) {
+                    publishNotEligibleIfIdle(radio, session)
+                    return StartAttempt.Blocked(radio, SessionIssueKey.NOT_ELIGIBLE)
+                }
                 val (status, issue) = mapRefusal(result.error)
                 publish(withStatus(radio, status, issue))
                 if (status == RadioSessionUiStatus.PERMISSION_REQUIRED) {
@@ -143,6 +157,19 @@ class ObservationSessionOrchestrator(
                     StartAttempt.Blocked(radio, issue ?: SessionIssueKey.INTERNAL_ERROR)
                 }
             }
+        }
+    }
+
+    /**
+     * Field fix (2026-10-23): transient ineligibility feedback that NEVER fabricates a
+     * session stop or permanent unavailability. Only an IDLE radio (nothing ever
+     * observed in this session window) gains the typed retry hint, keeping its truthful
+     * IDLE status. A radio with real terminal history keeps that history untouched: the
+     * failed tap adds no misleading "stopped/unavailable" claim on top of the truth.
+     */
+    private fun publishNotEligibleIfIdle(radio: RadioType, session: RadioSessionUiState) {
+        if (session.status == RadioSessionUiStatus.IDLE) {
+            publish(withStatus(radio, RadioSessionUiStatus.IDLE, SessionIssueKey.NOT_ELIGIBLE))
         }
     }
 

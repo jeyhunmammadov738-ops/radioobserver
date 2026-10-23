@@ -67,6 +67,72 @@ class ObservationSessionOrchestratorTest {
         rssiDbm = -67,
     )
 
+    // Q (field fix 2026-10-23) ------------------------------------------------
+
+    @Test
+    fun `Q1 - ineligible start on IDLE never fabricates BLOCKED or a foreground stop`() {
+        val orch = orchestrator()
+        // Fresh process: never resumed, nothing ever started. Eligibility false.
+        val attempt = orch.startBleSession(
+            StartAuthorization(foregroundEligible = false, preciseLocation = true,
+                capabilityReady = true))
+        assertEquals(ObservationSessionOrchestrator.StartAttempt.Blocked(
+            RadioType.BLE, SessionIssueKey.NOT_ELIGIBLE), attempt)
+        val snap = states.last()
+        // Truthful: still not observing, but NOT "unavailable" and NOT a stop claim.
+        assertEquals(RadioSessionUiStatus.IDLE, snap.bleSession.status)
+        assertEquals(SessionIssueKey.NOT_ELIGIBLE, snap.bleSession.issueKey)
+        // The other radio is untouched: rejection of one start is not a global state.
+        assertEquals(RadioSessionUiStatus.IDLE, snap.wifiSession.status)
+        assertNull(snap.wifiSession.issueKey)
+    }
+
+    @Test
+    fun `Q2 - ineligible start preserves a real terminal session history truthfully`() {
+        val orch = orchestrator()
+        supervisor.onHostResumed()
+        orch.startBleSession(fullAuth) // real session runs
+        supervisor.onHostPaused()       // real foreground loss stops it truthfully
+        val history = states.last()
+        assertEquals(RadioSessionUiStatus.STOPPED, history.bleSession.status)
+        assertEquals(SessionIssueKey.FOREGROUND_LOST, history.bleSession.issueKey)
+        // A later ineligible start attempt must NOT overwrite the truthful history
+        // with a fabricated "unavailable/stopped" claim.
+        orch.startBleSession(
+            StartAuthorization(foregroundEligible = false, preciseLocation = true,
+                capabilityReady = true))
+        val snap = states.last()
+        assertEquals(RadioSessionUiStatus.STOPPED, snap.bleSession.status)
+        assertEquals(SessionIssueKey.FOREGROUND_LOST, snap.bleSession.issueKey)
+    }
+
+    @Test
+    fun `Q3 - source ForegroundIneligible refusal gets the same transient treatment`() {
+        val orch = orchestrator()
+        supervisor.onHostResumed() // gate passes, but the source re-gate refuses
+        ble.configuredRefusal = ObservationError.ForegroundIneligible(RadioType.BLE)
+        val attempt = orch.startBleSession(fullAuth)
+        assertEquals(ObservationSessionOrchestrator.StartAttempt.Blocked(
+            RadioType.BLE, SessionIssueKey.NOT_ELIGIBLE), attempt)
+        val snap = states.last()
+        assertEquals(RadioSessionUiStatus.IDLE, snap.bleSession.status)
+        assertEquals(SessionIssueKey.NOT_ELIGIBLE, snap.bleSession.issueKey)
+    }
+
+    @Test
+    fun `Q4 - after a transient NOT_ELIGIBLE a later eligible start works normally`() {
+        val orch = orchestrator()
+        orch.startWifiObservation(
+            StartAuthorization(foregroundEligible = false, preciseLocation = true,
+                capabilityReady = true)) // transient rejection
+        supervisor.onHostResumed()
+        val attempt = orch.startWifiObservation(fullAuth)
+        assertEquals(ObservationSessionOrchestrator.StartAttempt.Started(RadioType.WIFI), attempt)
+        val snap = states.last()
+        assertEquals(RadioSessionUiStatus.OBSERVING, snap.wifiSession.status)
+        assertNull(snap.wifiSession.issueKey)
+    }
+
     // A -----------------------------------------------------------------------
 
     @Test

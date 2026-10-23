@@ -332,6 +332,7 @@ private fun issueLabel(issue: SessionIssueKey): String = stringResource(
         SessionIssueKey.SCAN_THROTTLED -> R.string.issue_scan_throttled
         SessionIssueKey.HARDWARE_UNSUPPORTED -> R.string.issue_hardware_unsupported
         SessionIssueKey.FOREGROUND_LOST -> R.string.issue_foreground_lost
+        SessionIssueKey.NOT_ELIGIBLE -> R.string.issue_not_eligible
         SessionIssueKey.INTERNAL_ERROR -> R.string.issue_internal_error
     },
 )
