@@ -41,6 +41,7 @@ import com.example.radioobserver.core.radio.ui.ObservationFeedProjection.FeedFil
 import com.example.radioobserver.core.radio.ui.ObservationRowUi
 import com.example.radioobserver.core.radio.ui.ObservationUiState
 import com.example.radioobserver.ui.components.CompactInfoRow
+import com.example.radioobserver.ui.ManufacturerPresentation
 import com.example.radioobserver.ui.components.EmptyState
 import com.example.radioobserver.ui.components.PillStyle
 import com.example.radioobserver.ui.components.SectionHeader
@@ -285,9 +286,20 @@ private fun DetailContent(row: ObservationRowUi) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(Spacing.lg), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             SectionHeader(stringResource(R.string.detail_section_hints))
+            // Classifier English sentinels are localized at the presentation boundary
+            // (ManufacturerPresentation); real OUI hints pass through unchanged.
             CompactInfoRow(
                 stringResource(R.string.detail_field_manufacturer),
-                row.manufacturerHint ?: unknown)
+                if (ManufacturerPresentation.isKnownFallback(row.manufacturerHint))
+                    stringResource(R.string.manufacturer_unavailable)
+                else row.manufacturerHint ?: unknown)
+            if (row.radio == RadioType.WIFI && row.locallyAdministered) {
+                Text(
+                    text = stringResource(R.string.manufacturer_local_address_explanation),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             CompactInfoRow(stringResource(R.string.detail_field_type), row.typeHint ?: unknown)
             CompactInfoRow(
                 stringResource(R.string.detail_field_locally_administered),

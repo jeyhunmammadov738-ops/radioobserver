@@ -2,6 +2,8 @@ package com.example.radioobserver.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -267,7 +269,11 @@ private fun RadioControlCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            // FINAL POLISH responsiveness: FlowRow keeps the two primary actions
+            // side-by-side on normal widths but REFLOWS them to full lines at
+            // ~320dp / 2.0x font scale — a label is never clipped or squashed.
+            @OptIn(ExperimentalLayoutApi::class)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 if (ControlScreenProjection.startEnabled(session.status)) {
                     Button(
                         onClick = onStart,

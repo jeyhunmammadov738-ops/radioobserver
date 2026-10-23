@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -210,8 +211,18 @@ private fun HistoryRecordRow(
     onOpenDetail: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    val safeName = record.displayName ?: stringResource(R.string.history_unnamed)
+    val detailA11y = stringResource(R.string.history_open_detail_a11y, safeName)
+    val deleteA11y = stringResource(R.string.history_delete_one_a11y, safeName)
+    // FINAL POLISH compaction: the Xiaomi screenshots showed tall, mostly-empty
+    // cards. Tightened rhythm (4/8dp scale): 8dp card padding, 4dp section gap,
+    // slimmed action buttons (contentPadding) that still keep their 48dp targets.
+    // A card tap still does NOTHING — only the explicit, labeled buttons act.
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(Spacing.md), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+        Column(
+            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+        ) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
@@ -219,7 +230,7 @@ private fun HistoryRecordRow(
                 SourceIcon(radio = record.radio)
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        text = record.displayName ?: stringResource(R.string.history_unnamed),
+                        text = safeName,
                         style = MaterialTheme.typography.titleMedium,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -236,10 +247,22 @@ private fun HistoryRecordRow(
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                TextButton(onClick = onOpenDetail, modifier = Modifier.heightIn(min = 48.dp)) {
+                TextButton(
+                    onClick = onOpenDetail,
+                    modifier = Modifier
+                        .heightIn(min = 48.dp)
+                        .semantics { contentDescription = detailA11y },
+                    contentPadding = PaddingValues(horizontal = Spacing.md, vertical = Spacing.xs),
+                ) {
                     Text(stringResource(R.string.history_open_detail))
                 }
-                TextButton(onClick = onDelete, modifier = Modifier.heightIn(min = 48.dp)) {
+                TextButton(
+                    onClick = onDelete,
+                    modifier = Modifier
+                        .heightIn(min = 48.dp)
+                        .semantics { contentDescription = deleteA11y },
+                    contentPadding = PaddingValues(horizontal = Spacing.md, vertical = Spacing.xs),
+                ) {
                     Text(stringResource(R.string.history_delete_one))
                 }
             }
@@ -330,13 +353,35 @@ fun HistoryDetailScreen(
                         record.ageMs?.let { HistoryAgeFormat.formatApproximate(it) }
                             ?: stringResource(R.string.history_detail_age_unknown),
                     )
+                    // FINAL POLISH: sinyal kategorisi KABA bir ipucudur ve kayıt
+                    // anına aittir; şu anki yakınlık kanıtı değildir.
+                    Text(stringResource(R.string.signal_qualitative_note), style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.history_signal_record_note), style = MaterialTheme.typography.bodySmall)
                 }
             }
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(Spacing.lg), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                     SectionHeader(stringResource(R.string.detail_section_hints))
-                    record.manufacturerHint?.let {
-                        CompactInfoRow(stringResource(R.string.history_detail_manufacturer), it)
+                    record.manufacturerHint?.let { hint ->
+                        // Classifier English sentinels localized at the presentation
+                        // boundary; real OUI hints pass through unchanged. The locally
+                        // administered sentinel additionally shows the honest Turkish
+                        // explanation. Never a BSSID, never an invented vendor.
+                        if (ManufacturerPresentation.isKnownFallback(hint)) {
+                            CompactInfoRow(
+                                stringResource(R.string.history_detail_manufacturer),
+                                stringResource(R.string.manufacturer_unavailable),
+                            )
+                            if (ManufacturerPresentation.isLocallyAdministeredFallback(hint)) {
+                                Text(
+                                    text = stringResource(R.string.manufacturer_local_address_explanation),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        } else {
+                            CompactInfoRow(stringResource(R.string.history_detail_manufacturer), hint)
+                        }
                     }
                     record.typeHint?.let {
                         CompactInfoRow(stringResource(R.string.history_detail_type), it)

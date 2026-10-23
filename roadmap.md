@@ -343,7 +343,18 @@ Ayarlar with short summaries + expandable full consent copy; unified detail desi
 language (black sub-panels removed) and human-friendly Turkish record age
 ("yaklaşık 47 dakika"). No behavior/permission/scanning change; history settings
 reuse one controller. Core 266/266, app 35/35, lint 0 errors/15 warnings, DEBUG APK
-only. Phone retest required. Details: docs/field-test-start-permission-2026-10-23.md (fifth
+only. Phone retest required.
+
+POST-ROADMAP POLISH (2026-10-23): Premium UI/UX V2 final polish
+(developer-approved; docs/premium-ui-ux-v2.md addendum). (1) Compact history record
+rows (tightened 4/8dp rhythm, slimmed but 48dp actions, name-scoped delete/detail
+a11y; card tap never deletes). (2) Turkish presentation of the classifier's English
+vendor sentinels via the pure ManufacturerPresentation boundary ("Üretici
+belirlenemedi" + locally-administered explanation; real OUI hints unchanged; core
+classifier untouched) and recorded-time signal semantics on the history detail.
+(3) Adaptive FlowRow Start/Stop for 320dp/2.0x. No behavior/permission/manifest
+change. Core 266/266, app 39/39, lint 0 errors/15 warnings. DEBUG APK only. Phone
+retest required. Details: docs/field-test-start-permission-2026-10-23.md (fifth
 section).
 
 ## Phase 3 — Friendly Compose UI & Live Observation State (COMPLETE: 10/10 done)

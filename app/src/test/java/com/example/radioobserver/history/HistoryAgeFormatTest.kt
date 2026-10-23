@@ -38,6 +38,13 @@ class HistoryAgeFormatTest {
     }
 
     @Test
+    fun `invalid negative ages are bounded honestly, never negative text`() {
+        // A corrupt/negative stored value must never render a negative duration.
+        assertEquals("1 dakikadan az", HistoryAgeFormat.formatAgeMs(-5_000))
+        assertEquals("1 dakikadan az", HistoryAgeFormat.formatAgeMs(Long.MIN_VALUE))
+    }
+
+    @Test
     fun `very large ages are bounded honestly`() {
         assertEquals("30 günden fazla", HistoryAgeFormat.formatAgeMs(45 * 86_400_000L))
         assertEquals("yaklaşık 30 günden fazla", HistoryAgeFormat.formatApproximate(45 * 86_400_000L))
