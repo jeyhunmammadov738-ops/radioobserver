@@ -3,6 +3,11 @@ package com.example.radioobserver
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.fillMaxSize
 import com.example.radioobserver.ble.AndroidBleObservationSource
 import com.example.radioobserver.core.radio.lifecycle.RadioObservationSupervisor
 import com.example.radioobserver.lifecycle.ObservationLifecycleBridge
@@ -22,6 +27,7 @@ import com.example.radioobserver.ui.ObservationsFeedScreen
 import com.example.radioobserver.core.radio.ui.ObservationUiState
 import com.example.radioobserver.ui.RadioObserverControlScreen
 import com.example.radioobserver.diag.FieldDiagnostics
+import com.example.radioobserver.ui.FieldDiagnosticsPanel
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -57,6 +63,10 @@ class MainActivity : ComponentActivity() {
     // session status — a grant alone changes nothing; the two-tap rule stands). The
     // holder dies with this Activity: recreation starts from a fresh inert state.
     private val controlUiState = mutableStateOf(ObservationUiState.initial())
+
+    // Third field iteration (2026-10-23): DEBUG panel inputs. The sink flag the SOURCE
+    // adapters gate on, surfaced for the on-screen FieldDiag-03 diagnostics only.
+    private val sourceEligibilityState = mutableStateOf<Boolean?>(null)
 
     // Phase 3.6: purely LOCAL read-only navigation state (no navigation dependency).
     // Switching destination changes NO session/permission/scanning state; the control
@@ -98,6 +108,7 @@ class MainActivity : ComponentActivity() {
             // not leave the transient NOT_ELIGIBLE hint latched as current state.
             sessionOrchestrator.onForegroundEligibilityChanged(eligible)
             FieldDiagnostics.log("eligibility_changed", "eligible" to eligible)
+            sourceEligibilityState.value = eligible
         }
         observationLifecycleBridge = ObservationLifecycleBridge(this, observationSupervisor)
         // 3.3 registration (before the activity reaches STARTED); the state listener stays
@@ -150,6 +161,22 @@ class MainActivity : ComponentActivity() {
             // these user-click callbacks into the 3.4 presenter; composition,
             // recomposition, resume, permission callbacks and recreation dispatch
             // NOTHING on their own. The state is the orchestrator's sanitized snapshot.
+            Column {
+                // Third field iteration (2026-10-23): DEBUG-ONLY on-screen diagnostics
+                // (FieldDiag-03) so the next phone retest needs NO ADB. Never rendered
+                // in release builds; reads typed state only, no control-flow effect.
+                if (FieldDiagnostics.isDebugBuild) {
+                    val s = controlUiState.value
+                    FieldDiagnosticsPanel(
+                        orchestratorEligible = observationSupervisor.isForegroundEligible,
+                        sourceEligible = sourceEligibilityState.value,
+                        sessionSummary = "Oturumlar: BLE=${s.bleSession.status}" +
+                            (s.bleSession.issueKey?.let { "($it)" } ?: "") +
+                            " | WIFI=${s.wifiSession.status}" +
+                            (s.wifiSession.issueKey?.let { "($it)" } ?: ""),
+                    )
+                }
+            Box(Modifier.weight(1f)) {
             when (val screen = currentScreen.value) {
                 is Screen.Home -> RadioObserverControlScreen(
                     state = controlUiState.value,
@@ -189,6 +216,8 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
+            }
         }
     }
+}
 }
