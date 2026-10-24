@@ -400,7 +400,20 @@ names, deterministic duplicate rejection) stored atomically app-private
 (filter_presets_v1.txt, history store untouched; corrupt entries fail closed
 without deleting data; preset ids are repository bookkeeping, never device
 identity). +17 core regressions (299/299), app 45/45, lint 0 errors/15 warnings.
-DEBUG APK only. Xiaomi retest required (steps in the workstream doc). Details: docs/field-test-start-permission-2026-10-23.md (fifth
+DEBUG APK only. Xiaomi retest required (steps in the workstream doc).
+
+POST-ROADMAP WORKSTREAM 02 STARTUP CRASH HOTFIX (2026-10-24): Xiaomi could not
+launch the WS02 debug build (Unable to instantiate MainActivity; NPE:
+getApplicationContext on a null object reference). PROVEN source cause: the preset
+repository/storage was constructed in a Kotlin PROPERTY INITIALIZER, which runs
+during Activity instantiation before attachBaseContext (mBase null). Minimal fix:
+lateinit repository constructed exactly once in onCreate after super.onCreate
+(established HistoryController pattern); preset list state filled there.
+docs/workstream-02-startup-crash-hotfix.md holds the QA note, root cause and
+evidence. Fresh gates: core 299/299, app 49/49 (+4 startup-boundary regressions),
+lint 0 errors/15 warnings; DEBUG APK only (identity/version/signing unchanged,
+install-over safe, data preserved). WORKSTREAM 02 DEVICE ACCEPTANCE REMAINS OPEN
+until the Xiaomi launch retest passes. Details: docs/field-test-start-permission-2026-10-23.md (fifth
 section).
 
 ## Phase 3 — Friendly Compose UI & Live Observation State (COMPLETE: 10/10 done)

@@ -116,9 +116,17 @@ class MainActivity : ComponentActivity() {
     private val advancedCriteria = mutableStateOf(LiveFilter.AdvancedCriteria())
     private val searchQuery = mutableStateOf("")
     // Explicit user-managed presets, app-private and restart-surviving.
-    private val filterPresetRepository =
-        FilterPresets.Repository(FilterPresetFileStorage(applicationContext))
-    private val filterPresets = mutableStateOf(filterPresetRepository.list())
+    // STARTUP CRASH HOTFIX (Workstream 02, 2026-10-24): these used to be property
+    // INITIALIZERS, which execute during Activity instantiation — BEFORE Android
+    // attaches the base context (attachBaseContext). At that moment mBase is null,
+    // so FilterPresetFileStorage(applicationContext) crashed with
+    // "NullPointerException: getApplicationContext() on a null object reference"
+    // and the app could not even instantiate MainActivity (Xiaomi startup crash).
+    // Lifecycle-correct pattern: declare lazily, initialize EXACTLY ONCE in
+    // onCreate AFTER super.onCreate (same as HistoryController/FieldDiagnostics),
+    // before setContent or any consumer reads the preset list.
+    private lateinit var filterPresetRepository: FilterPresets.Repository
+    private val filterPresets = mutableStateOf(emptyList<FilterPresets.FilterPreset>())
     private val historyFilter = mutableStateOf(HistoryFilter.ALL)
 
     // DEBUG-only, hidden-by-default FieldDiag-04 visibility (post-roadmap policy):
@@ -147,6 +155,16 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // STARTUP CRASH HOTFIX (Workstream 02, 2026-10-24): Context is now valid
+        // (mBase attached by super.onCreate path). One-time, main-thread,
+        // synchronous initialization of the preset repository — the exact
+        // expression that previously ran during construction and crashed. Even a
+        // corrupt/unsupported preset store fails closed to an empty list here
+        // (codec drops malformed lines without touching the file), so startup
+        // can never crash on preset data. No scan/permission/session action.
+        filterPresetRepository =
+            FilterPresets.Repository(FilterPresetFileStorage(applicationContext))
+        filterPresets.value = filterPresetRepository.list()
         // DEBUG-only, privacy-safe field diagnostics (release builds emit nothing).
         FieldDiagnostics.initialize(applicationContext)
         // Eligibility holder: sources read this; only the supervisor (lifecycle-driven) sets it.
