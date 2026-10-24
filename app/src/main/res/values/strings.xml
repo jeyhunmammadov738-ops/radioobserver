@@ -95,6 +95,20 @@
     <string name="filter_preset_save_title">Ön ayarı kaydet</string>
     <string name="filter_preset_rename_title">Ön ayarı yeniden adlandır</string>
     <string name="filter_preset_name_label">Ön ayar adı</string>
+    <!-- WORKSTREAM 03A: signature classification hints (family hints only, never identity) -->
+    <string name="signature_row_hint_format">Olası tür: %1$s</string>
+    <string name="signature_category_access_point">Wi-Fi erişim noktası</string>
+    <string name="signature_category_ibeacon_family">iBeacon ailesi (genel beacon)</string>
+    <string name="signature_category_find_my_family">Find My düzenine uyan aygıt ailesi</string>
+    <string name="signature_status_supported">biçim doğrulaması var</string>
+    <string name="signature_status_ambiguous">belirsiz — kesin değil</string>
+    <string name="signature_status_conflict">çelişen ipuçları</string>
+    <string name="signature_detail_section">Sınıflandırma ipucu</string>
+    <string name="signature_detail_unknown_title">Cihaz türü belirlenemedi</string>
+    <string name="signature_detail_unknown_note">Mevcut sterilize gözlem verisinden güvenilir bir tür çıkarılamıyor. Bu bir eksiklik bildirimi değil; kimlik ya da model iddiası yapılmaz.</string>
+    <string name="signature_rule_format">Kural: %1$s (katalog %2$s)</string>
+    <string name="signature_caution">Bu yalnızca olası bir aygıt ailesi ipucudur; cihaz kimliği, model, yön veya mesafe kanıtı değildir.</string>
+    <string name="signature_conflict_format">Çelişen kurallar: %1$s</string>
     <string name="filter_preset_name_invalid">Ad boş olamaz ve en fazla 40 karakter olabilir.</string>
     <string name="filter_preset_name_duplicate">Bu adda bir ön ayar zaten var.</string>
     <string name="dialog_cancel">Vazgeç</string>

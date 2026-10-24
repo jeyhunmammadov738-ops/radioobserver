@@ -70,6 +70,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import com.example.radioobserver.core.radio.ui.FilterPresets
 import com.example.radioobserver.core.radio.ui.LiveFilter
 import com.example.radioobserver.core.radio.ui.LiveViewKind
+import com.example.radioobserver.core.radio.signature.SignatureCategory
+import com.example.radioobserver.core.radio.signature.SignatureClassifier
+import com.example.radioobserver.core.radio.signature.SignatureHint
+import com.example.radioobserver.core.radio.signature.SignatureHintStatus
+import com.example.radioobserver.core.radio.signature.SignatureInput
 import com.example.radioobserver.core.radio.ui.LiveViewProjection
 import com.example.radioobserver.ui.components.CompactInfoRow
 import com.example.radioobserver.ui.DetailTime
@@ -304,6 +309,13 @@ private fun ObservationRow(row: ObservationRowUi, onSelect: () -> Unit) {
     val source = radioWord(row.radio)
     val fresh = freshnessWord(row.freshness)
     val name = row.name ?: stringResource(R.string.row_unnamed)
+    // WORKSTREAM 03A: pure per-row classification projection from SANITIZED fields
+    // only (radio + pipeline type hint + format confidence). Pure display: it never
+    // changes membership, dispatches nothing, and persists nothing. Wi-Fi rows keep
+    // the source chip as their structural context (no redundant hint line).
+    val signatureHint = remember(row) {
+        SignatureClassifier.classify(SignatureInput.fromRow(row))
+    }
     val rowA11y = stringResource(R.string.a11y_row_format, name, source, fresh)
     Card(
         modifier = Modifier
@@ -332,6 +344,19 @@ private fun ObservationRow(row: ObservationRowUi, onSelect: () -> Unit) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (signatureHint.status != SignatureHintStatus.UNKNOWN &&
+                    signatureHint.status != SignatureHintStatus.CONFLICT &&
+                    signatureHint.category != SignatureCategory.ACCESS_POINT
+                ) {
+                    Text(
+                        text = stringResource(
+                            R.string.signature_row_hint_format,
+                            signatureCategoryLabel(signatureHint.category!!),
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             Column(
                 horizontalAlignment = Alignment.End,
@@ -487,6 +512,10 @@ private fun DetailContent(row: ObservationRowUi) {
                 else stringResource(R.string.value_no))
         }
     }
+    // WORKSTREAM 03A: honest classification provenance section. Explains WHY a hint
+    // was suggested (safe field provenance, rule id + catalog version) and shows the
+    // truthful Turkish fallback when nothing supportable can be inferred.
+    SignatureHintSection(row)
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(Spacing.lg), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             SectionHeader(stringResource(R.string.detail_section_limits))
@@ -1183,4 +1212,105 @@ private fun PresetNameDialog(
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.dialog_cancel)) }
         },
     )
+}
+
+/**
+ * WORKSTREAM 03A — detail classification provenance section. Shows the broad family
+ * hint (when supportable), its status, the matching rule id + catalog version and the
+ * non-sensitive rationale, or the honest "could not be determined" fallback. Never
+ * claims identity, model, direction or distance; never implies two observations are
+ * the same physical device.
+ */
+@Composable
+private fun SignatureHintSection(row: ObservationRowUi) {
+    val hint = remember(row) { SignatureClassifier.classify(SignatureInput.fromRow(row)) }
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+        ) {
+            SectionHeader(stringResource(R.string.signature_detail_section))
+            when (hint.status) {
+                SignatureHintStatus.UNKNOWN -> {
+                    Text(
+                        text = stringResource(R.string.signature_detail_unknown_title),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        text = stringResource(R.string.signature_detail_unknown_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                SignatureHintStatus.CONFLICT -> {
+                    Text(
+                        text = stringResource(R.string.signature_status_conflict),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.signature_conflict_format,
+                            hint.matchedRuleIds.joinToString(", "),
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        text = stringResource(R.string.signature_caution),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                else -> {
+                    hint.category?.let { category ->
+                        Text(
+                            text = stringResource(
+                                R.string.signature_row_hint_format,
+                                signatureCategoryLabel(category),
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            text = when (hint.status) {
+                                SignatureHintStatus.SUPPORTED ->
+                                    stringResource(R.string.signature_status_supported)
+                                else -> stringResource(R.string.signature_status_ambiguous)
+                            },
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        hint.rationale.forEach { line ->
+                            Text(
+                                text = line,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        hint.matchedRuleIds.forEach { ruleId ->
+                            Text(
+                                text = stringResource(
+                                    R.string.signature_rule_format,
+                                    ruleId, hint.catalogVersion,
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Text(
+                            text = stringResource(R.string.signature_caution),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun signatureCategoryLabel(category: SignatureCategory): String = when (category) {
+    SignatureCategory.ACCESS_POINT -> stringResource(R.string.signature_category_access_point)
+    SignatureCategory.IBEACON_FAMILY -> stringResource(R.string.signature_category_ibeacon_family)
+    SignatureCategory.FIND_MY_FAMILY -> stringResource(R.string.signature_category_find_my_family)
 }

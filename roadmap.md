@@ -413,7 +413,23 @@ docs/workstream-02-startup-crash-hotfix.md holds the QA note, root cause and
 evidence. Fresh gates: core 299/299, app 49/49 (+4 startup-boundary regressions),
 lint 0 errors/15 warnings; DEBUG APK only (identity/version/signing unchanged,
 install-over safe, data preserved). WORKSTREAM 02 DEVICE ACCEPTANCE REMAINS OPEN
-until the Xiaomi launch retest passes. Details: docs/field-test-start-permission-2026-10-23.md (fifth
+until the Xiaomi launch retest passes.
+
+POST-ROADMAP WORKSTREAM 03A (2026-10-24, developer-approved slice): privacy-safe
+signature classification — pure Kotlin engine + 5-rule ORIGINAL versioned catalog
+(radioobserver-signature-catalog-v1) + honest UI hints. Typed input enforces the
+trust boundary structurally (radio + pipeline type hint + format confidence ONLY;
+no name/SSID/manufacturer/RSSI/identity fields), so no identity-adjacent data can
+enter classification and no fingerprint can be persisted (classification is an
+ephemeral display projection; nothing stored). List rows show a concise 'Olası
+tür' line for BLE families; detail shows a provenance card (rule id + catalog
+version + rationale) or the truthful 'Cihaz türü belirlenemedi' fallback;
+conflicts keep uncertainty deterministically. Category filter DEFERRED (would
+change the WS02 preset codec schema; no fake filter added). WS01 radar correction
+and WS02 filters/presets/startup-hotfix untouched. +9 core regressions (308/308),
+app 49/49, lint 0 errors/15 warnings. DEBUG APK only. docs/workstream-03a-
+signature-core.md holds the trust-boundary table, catalog provenance and the
+Xiaomi checklist. WS03B and later workstreams NOT started. Details: docs/field-test-start-permission-2026-10-23.md (fifth
 section).
 
 ## Phase 3 — Friendly Compose UI & Live Observation State (COMPLETE: 10/10 done)
