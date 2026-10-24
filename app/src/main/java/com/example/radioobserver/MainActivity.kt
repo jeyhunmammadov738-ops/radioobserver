@@ -35,6 +35,13 @@ import com.example.radioobserver.core.radio.ui.FilterPresets
 import com.example.radioobserver.core.radio.ui.ObservationUiState
 import com.example.radioobserver.filters.FilterPresetFileStorage
 import com.example.radioobserver.signature.SignatureUserRuleFileStorage
+import com.example.radioobserver.history.HistoryAnnotationFileStorage
+import com.example.radioobserver.core.radio.history.HistoryAnnotationPersistence
+import com.example.radioobserver.core.radio.ui.LiveFavorites
+import com.example.radioobserver.core.radio.alerts.AlertTrigger
+import com.example.radioobserver.core.radio.alerts.SessionAlert
+import com.example.radioobserver.core.radio.alerts.SessionAlertEngine
+import com.example.radioobserver.core.radio.ui.RadioSessionUiStatus
 import com.example.radioobserver.core.radio.signature.UserSignatureRuleRepository
 import com.example.radioobserver.core.radio.signature.UserSignatureRule
 import com.example.radioobserver.core.radio.signature.UserRuleSelector
@@ -124,6 +131,31 @@ class MainActivity : ComponentActivity() {
     // is constructed in onCreate AFTER super.onCreate (WS02 hotfix contract).
     private lateinit var signatureUserRuleRepository: UserSignatureRuleRepository
     private val signatureUserRules = mutableStateOf(emptyList<UserSignatureRule>())
+    // WORKSTREAM 04: SESSION-LOCAL live favorites — in-memory UI state ONLY
+    // (no Context, no persistence: favorites die with the process/session). The
+    // favorite set holds session-local rowId ordinals exclusively.
+    private val liveFavoriteIds = mutableStateOf(emptySet<String>())
+    // Favorites-only view toggles: ephemeral UI preferences, never persisted.
+    private val feedFavoritesOnly = mutableStateOf(false)
+    private val historyFavoritesOnly = mutableStateOf(false)
+    // WORKSTREAM 04: controlled IN-APP alert engine. Pure Kotlin, constructed
+    // with NO Android dependency (safe in a property initializer); DISABLED by
+    // default and empty at every cold start (no persistence, no auto re-enable).
+    private val sessionAlertEngine = SessionAlertEngine()
+    private val sessionAlertUi = mutableStateOf(SessionAlertUiState())
+    /** Compose-observed alert UI snapshot; updated ONLY from orchestrator publications. */
+    data class SessionAlertUiState(
+        val enabled: Boolean = false,
+        val triggers: Set<AlertTrigger> = emptySet(),
+        val alerts: List<SessionAlert> = emptyList(),
+        val sessionActive: Boolean = false,
+    ) {
+        /** Converts to the shared control-screen snapshot type. */
+        fun toUi() = com.example.radioobserver.ui.AlertsUi(
+            enabled = enabled, triggers = triggers, alerts = alerts,
+            sessionActive = sessionActive,
+        )
+    }
     // WORKSTREAM 02: advanced live filtering — UI state ONLY, never persisted on
     // its own (presets are saved EXPLICITLY by the user via the repository).
     // Changing any of it dispatches nothing (no scan, permission, session action).
@@ -240,7 +272,13 @@ class MainActivity : ComponentActivity() {
         // Optional history: fed with EVERY orchestrator publication (event-driven, not
         // recomposition-driven). The controller's tracker dedups to one bounded snapshot
         // per session-local observation and never injects anything back.
-        historyController = HistoryController(applicationContext)
+        // WORKSTREAM 04: record-bound annotation storage — same lifecycle-correct
+        // pattern as above (Context-dependent storage constructed exactly ONCE,
+        // here, after super.onCreate; never in a property initializer).
+        historyController = HistoryController(
+            applicationContext,
+            HistoryAnnotationFileStorage(applicationContext) as HistoryAnnotationPersistence,
+        )
         historyController.initialize()
         sessionOrchestrator = ObservationSessionOrchestrator(
             supervisor = observationSupervisor,
@@ -248,6 +286,24 @@ class MainActivity : ComponentActivity() {
             onUiState = { state ->
                 controlUiState.value = state
                 historyController.onLiveRows(state.rows)
+                // WORKSTREAM 04: session-local favorite teardown — favorites die
+                // with their rows (disposal/TTL/empty session clears the set).
+                liveFavoriteIds.value = LiveFavorites.retain(
+                    liveFavoriteIds.value, state.rows.map { it.rowId },
+                )
+                // WORKSTREAM 04: alert reducer — fed ONLY here (every orchestrator
+                // publication), never by recomposition. A session is eligible only
+                // while a user-started OBSERVING session is actually alive; any
+                // other state (stop, timeout, foreground loss) resets the engine.
+                val sessionActive = state.bleSession.status == RadioSessionUiStatus.OBSERVING ||
+                    state.wifiSession.status == RadioSessionUiStatus.OBSERVING
+                sessionAlertEngine.onRows(state.rows, sessionActive = sessionActive)
+                sessionAlertUi.value = SessionAlertUiState(
+                    enabled = sessionAlertEngine.enabled,
+                    triggers = sessionAlertEngine.triggers,
+                    alerts = sessionAlertEngine.alerts(),
+                    sessionActive = sessionActive,
+                )
             },
         )
         sessionPresenter = ObservationSessionPresenter(
@@ -344,6 +400,38 @@ class MainActivity : ComponentActivity() {
                         // prompts a dialog, never starts a session (two-tap rule intact).
                         onRecheckBle = sessionPresenter::onUserRecheckBleTap,
                         onRecheckWifi = sessionPresenter::onUserRecheckWifiTap,
+                        // WORKSTREAM 04: IN-APP session alerts. Controls are pure
+                        // engine state changes — they never dispatch Start/Stop, a
+                        // permission action or any radio event.
+                        alerts = sessionAlertUi.value.toUi(),
+                        onAlertsEnabledChange = { enabled ->
+                            sessionAlertEngine.setEnabled(enabled)
+                            sessionAlertUi.value = sessionAlertUi.value.copy(
+                                enabled = sessionAlertEngine.enabled,
+                                alerts = sessionAlertEngine.alerts(),
+                            )
+                        },
+                        onAlertTriggerToggled = { trigger ->
+                            val next = sessionAlertEngine.triggers.let {
+                                if (trigger in it) it - trigger else it + trigger
+                            }
+                            sessionAlertEngine.setTriggers(next)
+                            sessionAlertUi.value = sessionAlertUi.value.copy(
+                                triggers = sessionAlertEngine.triggers,
+                            )
+                        },
+                        onDismissAlert = { alertId ->
+                            sessionAlertEngine.dismiss(alertId)
+                            sessionAlertUi.value = sessionAlertUi.value.copy(
+                                alerts = sessionAlertEngine.alerts(),
+                            )
+                        },
+                        onDismissAllAlerts = {
+                            sessionAlertEngine.dismissAll()
+                            sessionAlertUi.value = sessionAlertUi.value.copy(
+                                alerts = sessionAlertEngine.alerts(),
+                            )
+                        },
                     )
                     AppTab.FEED -> ObservationsFeedScreen(
                         state = controlUiState.value,
@@ -392,6 +480,15 @@ class MainActivity : ComponentActivity() {
                         onRowSelect = { rowId ->
                             currentScreen.value = AppDestination.ObservationDetail(rowId)
                         },
+                        // WORKSTREAM 04: session-local favorites (list view only —
+                        // Radar/Timeline membership untouched; UI state, dispatches nothing).
+                        favorites = liveFavoriteIds.value,
+                        favoritesOnly = feedFavoritesOnly.value,
+                        onToggleFavorite = { rowId ->
+                            liveFavoriteIds.value =
+                                LiveFavorites.toggle(liveFavoriteIds.value, rowId)
+                        },
+                        onFavoritesOnlyChange = { feedFavoritesOnly.value = it },
                     )
                     AppTab.HISTORY -> HistoryScreen(
                         // Browsing surface only: preferences live in Ayarlar, driven
@@ -399,6 +496,14 @@ class MainActivity : ComponentActivity() {
                         state = historyController.state.value,
                         filter = historyFilter.value,
                         onFilterChange = { historyFilter.value = it },
+                        // WORKSTREAM 04: saved favorites filter (ephemeral UI toggle).
+                        favoritesOnly = historyFavoritesOnly.value,
+                        onFavoritesOnlyChange = { historyFavoritesOnly.value = it },
+                        onToggleFavorite = { recordId ->
+                            val current = historyController.state.value
+                                .annotations[recordId]?.favorite ?: false
+                            historyController.setAnnotation(recordId, null, null, !current)
+                        },
                         onDeleteOne = { historyController.deleteOne(it) },
                         onClearAll = { historyController.clearAll() },
                         onDismissNotices = { historyController.dismissNotices() },
@@ -459,10 +564,23 @@ class MainActivity : ComponentActivity() {
                     rowId = screen.rowId,
                     onBack = { currentScreen.value = TabScreen(AppTab.FEED) },
                     userRules = signatureUserRules.value,
+                    // WORKSTREAM 04: session-local favorite affordance in the detail.
+                    isFavorite = LiveFavorites.isFavorite(
+                        liveFavoriteIds.value, screen.rowId),
+                    onToggleFavorite = {
+                        liveFavoriteIds.value =
+                            LiveFavorites.toggle(liveFavoriteIds.value, screen.rowId)
+                    },
                 )
                 is AppDestination.HistoryDetail -> HistoryDetailScreen(
                     record = historyController.state.value.records
                         .firstOrNull { it.id == screen.recordId },
+                    // WORKSTREAM 04: record-bound annotation editor + favorite.
+                    annotation = historyController.state.value.annotations[screen.recordId],
+                    onSaveAnnotation = { label, note, favorite ->
+                        historyController.setAnnotation(screen.recordId, label, note, favorite)
+                    },
+                    onDeleteAnnotation = { historyController.deleteAnnotation(screen.recordId) },
                     onBack = { currentScreen.value = TabScreen(AppTab.HISTORY) },
                 )
             }

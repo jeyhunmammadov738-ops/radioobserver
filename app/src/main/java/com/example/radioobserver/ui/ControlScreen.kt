@@ -17,7 +17,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -44,6 +47,8 @@ import com.example.radioobserver.core.radio.ui.RadioSessionUiStatus
 import com.example.radioobserver.core.radio.ui.SessionIssueKey
 import com.example.radioobserver.ui.components.DashboardSummary
 import com.example.radioobserver.ui.components.PillStyle
+import com.example.radioobserver.core.radio.alerts.AlertTrigger
+import com.example.radioobserver.core.radio.alerts.SessionAlert
 import com.example.radioobserver.ui.components.SectionHeader
 import com.example.radioobserver.ui.components.SourceIcon
 import com.example.radioobserver.ui.components.Spacing
@@ -73,6 +78,14 @@ fun RadioObserverControlScreen(
     onOpenLocationSettings: () -> Unit = {},
     onRecheckBle: () -> Unit = {},
     onRecheckWifi: () -> Unit = {},
+    // WORKSTREAM 04: controlled IN-APP session alerts. These controls are PURE
+    // engine state changes: they never dispatch Start/Stop, permissions, scans
+    // or background anything (no notification permission exists or is needed).
+    alerts: AlertsUi = AlertsUi(),
+    onAlertsEnabledChange: (Boolean) -> Unit = {},
+    onAlertTriggerToggled: (AlertTrigger) -> Unit = {},
+    onDismissAlert: (String) -> Unit = {},
+    onDismissAllAlerts: () -> Unit = {},
 ) {
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -144,6 +157,16 @@ fun RadioObserverControlScreen(
                 onOpenPermissionSettings = onOpenPermissionSettings,
                 onOpenLocationSettings = onOpenLocationSettings,
                 onRecheck = onRecheckWifi,
+            )
+
+            // WORKSTREAM 04: in-app session alerts panel. IN-APP ONLY (no system
+            // notification, no service, no sound/vibration); disabled by default.
+            SessionAlertsPanel(
+                alerts = alerts,
+                onAlertsEnabledChange = onAlertsEnabledChange,
+                onAlertTriggerToggled = onAlertTriggerToggled,
+                onDismissAlert = onDismissAlert,
+                onDismissAllAlerts = onDismissAllAlerts,
             )
 
             InfoDisclosure()
@@ -427,3 +450,138 @@ private fun issueLabel(issue: SessionIssueKey): String = stringResource(
         SessionIssueKey.INTERNAL_ERROR -> R.string.issue_internal_error
     },
 )
+
+
+/** WORKSTREAM 04: alert UI snapshot (mirrors the pure engine; disabled by default). */
+data class AlertsUi(
+    val enabled: Boolean = false,
+    val triggers: Set<AlertTrigger> = emptySet(),
+    val alerts: List<SessionAlert> = emptyList(),
+    val sessionActive: Boolean = false,
+)
+
+/**
+ * Compact in-app alerts card: enable switch, trigger chips, honest lifecycle
+ * disclosure, current alert queue with per-alert and bulk dismissal, and a
+ * clear "no active session" indication. Disabled by default; nothing here is
+ * persisted, and the engine clears itself when the session ends.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SessionAlertsPanel(
+    alerts: AlertsUi,
+    onAlertsEnabledChange: (Boolean) -> Unit,
+    onAlertTriggerToggled: (AlertTrigger) -> Unit,
+    onDismissAlert: (String) -> Unit,
+    onDismissAllAlerts: () -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+        ) {
+            SectionHeader(stringResource(R.string.alerts_title))
+            val enableA11y = stringResource(R.string.alerts_enable_a11y)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.alerts_enable),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                Switch(
+                    checked = alerts.enabled,
+                    onCheckedChange = onAlertsEnabledChange,
+                    modifier = Modifier.semantics { contentDescription = enableA11y },
+                )
+            }
+            Text(
+                text = stringResource(R.string.alerts_explanation),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = stringResource(R.string.alerts_privacy_note),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (!alerts.sessionActive) {
+                Text(
+                    text = stringResource(R.string.alerts_no_session),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            if (alerts.enabled) {
+                Text(
+                    text = stringResource(R.string.alerts_triggers),
+                    style = MaterialTheme.typography.labelMedium,
+                )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    AlertTrigger.entries.forEach { trigger ->
+                        FilterChip(
+                            selected = trigger in alerts.triggers,
+                            onClick = { onAlertTriggerToggled(trigger) },
+                            label = { Text(alertTriggerLabel(trigger)) },
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        )
+                    }
+                }
+                if (alerts.alerts.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.alerts_empty),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    alerts.alerts.forEach { alert ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = stringResource(
+                                    R.string.alert_item_format,
+                                    alertTriggerLabel(alert.trigger),
+                                    if (alert.radio == RadioType.BLE) {
+                                        stringResource(R.string.alert_radio_ble)
+                                    } else {
+                                        stringResource(R.string.alert_radio_wifi)
+                                    },
+                                ),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f),
+                            )
+                            val dismissA11y = stringResource(R.string.alert_item_dismiss_a11y)
+                            TextButton(
+                                onClick = { onDismissAlert(alert.alertId) },
+                                modifier = Modifier
+                                    .heightIn(min = 48.dp)
+                                    .semantics { contentDescription = dismissA11y },
+                            ) { Text(stringResource(R.string.alert_dismiss)) }
+                        }
+                    }
+                    OutlinedButton(
+                        onClick = onDismissAllAlerts,
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) { Text(stringResource(R.string.alert_dismiss_all)) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun alertTriggerLabel(trigger: AlertTrigger): String = when (trigger) {
+    AlertTrigger.NEW_FRESH_BLE -> stringResource(R.string.alert_trigger_new_fresh_ble)
+    AlertTrigger.NEW_FRESH_WIFI -> stringResource(R.string.alert_trigger_new_fresh_wifi)
+    AlertTrigger.SIGNAL_IMMEDIATE -> stringResource(R.string.alert_trigger_signal_immediate)
+    AlertTrigger.SIGNAL_NEAR -> stringResource(R.string.alert_trigger_signal_near)
+    AlertTrigger.SIGNAL_FAR -> stringResource(R.string.alert_trigger_signal_far)
+    AlertTrigger.MANUFACTURER_KNOWN -> stringResource(R.string.alert_trigger_manufacturer_known)
+    AlertTrigger.MANUFACTURER_UNKNOWN -> stringResource(R.string.alert_trigger_manufacturer_unknown)
+}

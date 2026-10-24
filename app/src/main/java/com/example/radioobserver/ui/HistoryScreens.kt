@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +36,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.radioobserver.R
+import com.example.radioobserver.core.radio.history.HistoryAnnotation
 import com.example.radioobserver.core.radio.history.HistoryRecord
 import com.example.radioobserver.core.radio.model.RadioType
 import com.example.radioobserver.core.radio.pipeline.FreshnessState
@@ -64,11 +67,18 @@ import java.time.format.DateTimeFormatter
  */
 enum class HistoryFilter { ALL, BLUETOOTH, WIFI }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun HistoryScreen(
     state: HistoryController.UiState,
     filter: HistoryFilter,
     onFilterChange: (HistoryFilter) -> Unit,
+    // WORKSTREAM 04: saved-record favorites filter + explicit star toggles.
+    // A saved favorite belongs to ONE History record — it is NOT a persistent
+    // device identity and can never match another session's observations.
+    favoritesOnly: Boolean,
+    onFavoritesOnlyChange: (Boolean) -> Unit,
+    onToggleFavorite: (String) -> Unit,
     onDeleteOne: (String) -> Unit,
     onClearAll: () -> Unit,
     onDismissNotices: () -> Unit,
@@ -103,13 +113,22 @@ fun HistoryScreen(
                 color = MaterialTheme.colorScheme.primary,
             )
             HistoryFilterRow(filter, onFilterChange)
+            // WORKSTREAM 04: favorites-only chip (no new navigation tab).
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                FilterChip(
+                    selected = favoritesOnly,
+                    onClick = { onFavoritesOnlyChange(!favoritesOnly) },
+                    label = { Text(stringResource(R.string.history_favorites_only)) },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                )
+            }
             val visible = state.records.filter {
                 when (filter) {
                     HistoryFilter.ALL -> true
                     HistoryFilter.BLUETOOTH -> it.radio == RadioType.BLE
                     HistoryFilter.WIFI -> it.radio == RadioType.WIFI
                 }
-            }
+            }.filter { !favoritesOnly || state.annotations[it.id]?.favorite == true }
             if (visible.isEmpty()) {
                 // Honest empty state + a contextual pointer to the preferences in Ayarlar.
                 EmptyState(stringResource(R.string.history_empty))
@@ -123,6 +142,8 @@ fun HistoryScreen(
                 visible.forEach { record ->
                     HistoryRecordRow(
                         record = record,
+                        isFavorite = state.annotations[record.id]?.favorite == true,
+                        onToggleFavorite = { onToggleFavorite(record.id) },
                         onOpenDetail = { onOpenDetail(record.id) },
                         onDelete = { onDeleteOne(record.id) },
                     )
@@ -209,6 +230,8 @@ private fun HistoryNoticeCard(text: String, onDismiss: () -> Unit) {
 @Composable
 private fun HistoryRecordRow(
     record: HistoryRecord,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
     onOpenDetail: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -275,6 +298,23 @@ private fun HistoryRecordRow(
                 ) {
                     Text(stringResource(R.string.history_delete_one))
                 }
+                // WORKSTREAM 04: record-bound favorite star (one specific History
+                // record; never a device identity; never starts an observation).
+                val favoriteA11y = stringResource(R.string.history_favorite_toggle_a11y)
+                TextButton(
+                    onClick = onToggleFavorite,
+                    modifier = Modifier
+                        .heightIn(min = 48.dp)
+                        .semantics { contentDescription = favoriteA11y },
+                    contentPadding = PaddingValues(horizontal = Spacing.md, vertical = Spacing.xs),
+                ) {
+                    Text(
+                        text = stringResource(
+                            if (isFavorite) R.string.live_favorite_star_on
+                            else R.string.live_favorite_star_off),
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                }
             }
         }
     }
@@ -283,6 +323,11 @@ private fun HistoryRecordRow(
 @Composable
 fun HistoryDetailScreen(
     record: HistoryRecord?,
+    // WORKSTREAM 04: record-bound annotation (label/note/favorite). Bounded input,
+    // explicit user actions only; dies with its record (no orphan resurrection).
+    annotation: HistoryAnnotation? = null,
+    onSaveAnnotation: (String?, String?, Boolean) -> Unit = { _, _, _ -> },
+    onDeleteAnnotation: () -> Unit = {},
     onBack: () -> Unit,
 ) {
     Surface(modifier = Modifier.fillMaxSize()) {
@@ -314,6 +359,13 @@ fun HistoryDetailScreen(
                 EmptyState(stringResource(R.string.history_detail_missing))
                 return@Column
             }
+            // WORKSTREAM 04: record-bound annotation editor card.
+            HistoryAnnotationCard(
+                recordId = record.id,
+                annotation = annotation,
+                onSave = onSaveAnnotation,
+                onDelete = onDeleteAnnotation,
+            )
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(Spacing.lg), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                     Row(
@@ -448,3 +500,119 @@ private fun formatTime(epochMs: Long): String =
     DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
         .withZone(ZoneId.systemDefault())
         .format(Instant.ofEpochMilli(epochMs))
+
+
+/** WORKSTREAM 04: label/note/favorite editor for ONE saved History record. */
+@Composable
+private fun HistoryAnnotationCard(
+    recordId: String,
+    annotation: HistoryAnnotation?,
+    onSave: (String?, String?, Boolean) -> Unit,
+    onDelete: () -> Unit,
+) {
+    var editing by remember(recordId, annotation) { mutableStateOf(false) }
+    var label by remember(recordId, annotation) { mutableStateOf(annotation?.label ?: "") }
+    var note by remember(recordId, annotation) { mutableStateOf(annotation?.note ?: "") }
+    var favorite by remember(recordId, annotation) { mutableStateOf(annotation?.favorite ?: false) }
+    var tooLong by remember { mutableStateOf(false) }
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+        ) {
+            SectionHeader(stringResource(R.string.history_annotation_section))
+            Text(
+                text = stringResource(R.string.history_annotation_privacy_note),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (!editing) {
+                if (annotation == null) {
+                    Text(
+                        text = stringResource(R.string.history_annotation_none),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    annotation.label?.let {
+                        Text(it, style = MaterialTheme.typography.titleMedium)
+                    }
+                    annotation.note?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                OutlinedButton(
+                    onClick = {
+                        label = annotation?.label ?: ""
+                        note = annotation?.note ?: ""
+                        favorite = annotation?.favorite ?: false
+                        tooLong = false
+                        editing = true
+                    },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Text(
+                        stringResource(
+                            if (annotation == null) R.string.history_annotation_edit
+                            else R.string.history_annotation_edit),
+                    )
+                }
+            } else {
+                OutlinedTextField(
+                    value = label,
+                    onValueChange = { label = it },
+                    label = { Text(stringResource(R.string.history_annotation_label)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    label = { Text(stringResource(R.string.history_annotation_note)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(stringResource(R.string.history_annotation_favorite))
+                    Switch(checked = favorite, onCheckedChange = { favorite = it })
+                }
+                if (tooLong) {
+                    Text(
+                        text = stringResource(R.string.history_annotation_too_long),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    TextButton(
+                        onClick = {
+                            if (label.trim().length > 40 || note.trim().length > 200) {
+                                tooLong = true
+                                return@TextButton
+                            }
+                            onSave(label.ifBlank { null }, note.ifBlank { null }, favorite)
+                            editing = false
+                        },
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) { Text(stringResource(R.string.history_annotation_save)) }
+                    TextButton(
+                        onClick = { editing = false },
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) { Text(stringResource(R.string.history_cancel)) }
+                    TextButton(
+                        onClick = { onDelete(); editing = false },
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) { Text(stringResource(R.string.history_annotation_remove)) }
+                }
+            }
+        }
+    }
+}

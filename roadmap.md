@@ -447,7 +447,24 @@ validation + confirmation, plus a user-suggestions block in the observation deta
 WS02 startup hotfix honored (repository constructed in onCreate after super.onCreate).
 +13 core regressions (321/321), app 49/49, lint 0 errors/15 warnings (baseline kept).
 DEBUG APK only. docs/workstream-03b-user-catalog.md holds the whitelist, schema,
-corruption policy, test matrix and Xiaomi checklist. WS04 NOT started. Details: docs/field-test-start-permission-2026-10-23.md (fifth
+corruption policy, test matrix and Xiaomi checklist. WS04 NOT started.
+
+POST-ROADMAP WORKSTREAM 04 (2026-10-24, developer-approved): privacy-safe favorites,
+record-bound labels/notes and controlled IN-APP session alerts. Identity analysis:
+live rowId (session-local ordinal) vs History record id (random UUID) vs physical
+device — never conflated; no cross-session correlation anywhere. Session-local
+live favorites (pure Set-based UI state, disposal cleanup, Liste-only
+favorites-only view; Radar/Timeline membership untouched). RECORD-BOUND History
+annotations (favorite + label <= 40 + note <= 200) in a separate versioned
+app-private store (ws04-annotations-v1, atomic, fail-closed, orphan cleanup at the
+single publish() sync point; orphans can never recreate records). In-app alert
+engine (pure reducer, DISABLED by default, OBSERVING-session gate, FRESH-only
+freshness triggers — cached 'Eski' Wi-Fi can never alert, per-(trigger,row) dedup,
+bounded queue of 10 with FIFO eviction, recomposition-safe, cleared on
+disposal/foreground loss, no permissions/service/notifications/sound). +19 core
+tests (340/340), app 49/49, lint 0 errors/15 warnings (baseline kept).
+DEBUG APK only, versionCode NOT bumped. docs/workstream-04-favorites-labels-alerts.md
+holds the full threat model, test matrix and Xiaomi checklist. Details: docs/field-test-start-permission-2026-10-23.md (fifth
 section).
 
 ## Phase 3 — Friendly Compose UI & Live Observation State (COMPLETE: 10/10 done)

@@ -71,6 +71,7 @@ import com.example.radioobserver.core.radio.ui.FilterPresets
 import com.example.radioobserver.core.radio.ui.LiveFilter
 import com.example.radioobserver.core.radio.ui.LiveViewKind
 import com.example.radioobserver.core.radio.signature.SignatureCategory
+import com.example.radioobserver.core.radio.ui.LiveFavorites
 import com.example.radioobserver.core.radio.signature.SignatureClassifier
 import com.example.radioobserver.core.radio.signature.UserSignatureRule
 import com.example.radioobserver.core.radio.signature.SignatureHint
@@ -123,9 +124,19 @@ fun ObservationsFeedScreen(
     onRenamePreset: (String, String) -> Unit,
     onDeletePreset: (String) -> Unit,
     onRowSelect: (String) -> Unit,
+    // WORKSTREAM 04: SESSION-LOCAL favorites — pure UI state; toggling a star
+    // dispatches NOTHING (no session action, no History write) and the ids die
+    // with their session (never persisted, never matched across sessions).
+    favorites: Set<String>,
+    favoritesOnly: Boolean,
+    onToggleFavorite: (String) -> Unit,
+    onFavoritesOnlyChange: (Boolean) -> Unit,
 ) {
     // THE single shared boundary (LiveFilter.rowsFor) feeds ALL THREE views.
     val rows = LiveFilter.rowsFor(state, filter, criteria, searchQuery)
+    // WORKSTREAM 04: favorites-only applies to the LISTE view ONLY — Radar and
+    // Zaman tüneli keep their unchanged membership and marker accounting.
+    val displayRows = if (favoritesOnly) LiveFavorites.rowsFor(rows, favorites) else rows
     val advancedActive = LiveFilter.activeCriteriaCount(criteria, searchQuery) > 0
     // Non-persisted panel visibility; dies with the Activity like every other
     // Gözlemler UI preference.
@@ -149,6 +160,15 @@ fun ObservationsFeedScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = Spacing.xs),
                 )
+                // WORKSTREAM 04: honest session-local favorites disclosure.
+                if (favoritesOnly) {
+                    Text(
+                        text = stringResource(R.string.live_favorites_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = Spacing.xs),
+                    )
+                }
                 // WORKSTREAM 02: honest result accounting — session observations vs
                 // currently displayed ones (only when advanced filtering is active).
                 if (advancedActive) {
@@ -233,6 +253,13 @@ fun ObservationsFeedScreen(
                         else stringResource(R.string.filters_button),
                     )
                 }
+                // WORKSTREAM 04: session-local favorites-only view (Liste only).
+                FilterChip(
+                    selected = favoritesOnly,
+                    onClick = { onFavoritesOnlyChange(!favoritesOnly) },
+                    label = { Text(stringResource(R.string.live_favorites_only)) },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                )
             }
             if (filterPanelOpen) {
                 FilterPanel(
@@ -253,7 +280,7 @@ fun ObservationsFeedScreen(
             // as "no devices found"): the filter_no_matches state keeps the
             // session-vs-display accounting above visible.
             val emptyKind = when {
-                rows.isNotEmpty() -> null
+                displayRows.isNotEmpty() -> null
                 state.rows.isNotEmpty() -> FeedEmptyKind.NO_MATCHES_FOR_FILTER
                 else -> ObservationFeedProjection.emptyKind(state, filter)
             }
@@ -265,8 +292,13 @@ fun ObservationsFeedScreen(
                             start = Spacing.lg, end = Spacing.lg, top = Spacing.sm, bottom = Spacing.lg),
                         verticalArrangement = Arrangement.spacedBy(Spacing.sm),
                     ) {
-                        items(rows, key = { it.rowId }) { row ->
-                            ObservationRow(row = row, onSelect = { onRowSelect(row.rowId) })
+                        items(displayRows, key = { it.rowId }) { row ->
+                            ObservationRow(
+                                row = row,
+                                isFavorite = LiveFavorites.isFavorite(favorites, row.rowId),
+                                onToggleFavorite = { onToggleFavorite(row.rowId) },
+                                onSelect = { onRowSelect(row.rowId) },
+                            )
                         }
                     }
                     LiveViewKind.RADAR -> RadarView(
@@ -291,7 +323,8 @@ fun ObservationsFeedScreen(
                 FeedEmptyKind.SESSION_ACTIVE_NO_OBSERVATIONS -> EmptyState(stringResource(R.string.empty_feed_note))
                 FeedEmptyKind.NO_SESSION_NO_OBSERVATIONS -> EmptyState(stringResource(R.string.feed_empty_no_session))
                 FeedEmptyKind.NO_MATCHES_FOR_FILTER -> EmptyState(
-                    if (advancedActive) stringResource(R.string.filter_no_matches)
+                    if (favoritesOnly) stringResource(R.string.live_favorites_empty)
+                    else if (advancedActive) stringResource(R.string.filter_no_matches)
                     else stringResource(R.string.feed_empty_filter),
                 )
             }
@@ -306,7 +339,12 @@ fun ObservationsFeedScreen(
  * stable tracking ids). Long names wrap (maxLines 2) instead of clipping.
  */
 @Composable
-private fun ObservationRow(row: ObservationRowUi, onSelect: () -> Unit) {
+private fun ObservationRow(
+    row: ObservationRowUi,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
+    onSelect: () -> Unit,
+) {
     val source = radioWord(row.radio)
     val fresh = freshnessWord(row.freshness)
     val name = row.name ?: stringResource(R.string.row_unnamed)
@@ -373,6 +411,24 @@ private fun ObservationRow(row: ObservationRowUi, onSelect: () -> Unit) {
                     kind = freshnessPill(row.freshness),
                 )
             }
+            // WORKSTREAM 04: session-local favorite star. PURE UI state toggle —
+            // it dispatches nothing and writes NO History record; state dies with
+            // the session. 48dp target; tapping it cannot open or delete anything
+            // (the row card's own onClick handles selection separately).
+            val favoriteA11y = stringResource(R.string.live_favorite_toggle_a11y)
+            TextButton(
+                onClick = onToggleFavorite,
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .semantics { contentDescription = favoriteA11y },
+            ) {
+                Text(
+                    text = stringResource(
+                        if (isFavorite) R.string.live_favorite_star_on
+                        else R.string.live_favorite_star_off),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+            }
         }
     }
 }
@@ -397,6 +453,9 @@ fun ObservationDetailScreen(
     onBack: () -> Unit,
     // WORKSTREAM 03B: user-defined catalog for UNVERIFIED suggestions (display-only).
     userRules: List<UserSignatureRule> = emptyList(),
+    // WORKSTREAM 04: session-local favorite affordance (UI state, dispatches nothing).
+    isFavorite: Boolean = false,
+    onToggleFavorite: () -> Unit = {},
 ) {
     val detail = ObservationFeedProjection.detailFor(state, rowId)
     Surface(modifier = Modifier.fillMaxSize()) {
@@ -423,6 +482,21 @@ fun ObservationDetailScreen(
                     onClick = onBack,
                     modifier = Modifier.heightIn(min = 48.dp),
                 ) { Text(stringResource(R.string.feed_back)) }
+                // WORKSTREAM 04: session-local favorite star in the detail header.
+                val favoriteA11y = stringResource(R.string.live_favorite_toggle_a11y)
+                TextButton(
+                    onClick = onToggleFavorite,
+                    modifier = Modifier
+                        .heightIn(min = 48.dp)
+                        .semantics { contentDescription = favoriteA11y },
+                ) {
+                    Text(
+                        text = stringResource(
+                            if (isFavorite) R.string.live_favorite_star_on
+                            else R.string.live_favorite_star_off),
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                }
             }
             if (detail == null) {
                 EmptyState(stringResource(R.string.detail_unavailable))

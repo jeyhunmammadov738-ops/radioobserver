@@ -4,6 +4,9 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import androidx.compose.runtime.mutableStateOf
+import com.example.radioobserver.core.radio.history.HistoryAnnotation
+import com.example.radioobserver.core.radio.history.HistoryAnnotationPersistence
+import com.example.radioobserver.core.radio.history.HistoryAnnotationRepository
 import com.example.radioobserver.core.radio.history.HistoryConsent
 import com.example.radioobserver.core.radio.history.HistoryRecord
 import com.example.radioobserver.core.radio.history.LiveRowTracker
@@ -26,6 +29,7 @@ import java.util.concurrent.Executors
  */
 class HistoryController(
     context: Context,
+    annotationPersistence: HistoryAnnotationPersistence? = null,
     private val mainHandler: Handler = Handler(Looper.getMainLooper()),
     private val executor: ExecutorService = Executors.newSingleThreadExecutor(),
 ) {
@@ -34,12 +38,19 @@ class HistoryController(
         val loaded: Boolean = false,
         val consent: HistoryConsent = HistoryConsent(),
         val records: List<HistoryRecord> = emptyList(),
+        /** WORKSTREAM 04: record-bound annotations, always in sync with records. */
+        val annotations: Map<String, HistoryAnnotation> = emptyMap(),
         /** One-time honest notice: corrupt store lines were dropped on load. */
         val droppedNotice: Boolean = false,
         val failedClosedNotice: Boolean = false,
     )
 
     private val persistence = HistoryFileStorage(context)
+    // WORKSTREAM 04: RECORD-BOUND annotations (favorite/label/note) for saved
+    // records. Passed in from MainActivity (constructed AFTER super.onCreate —
+    // WS02 hotfix contract); null keeps the controller annotation-free.
+    private val annotations: HistoryAnnotationRepository? =
+        annotationPersistence?.let { HistoryAnnotationRepository(it) }
     private val history = ObservationHistory(
         persistence = persistence,
         clock = { System.currentTimeMillis() },
@@ -100,6 +111,25 @@ class HistoryController(
      *  still-active session cannot re-record its old rows after the wipe. */
     fun clearAll() = executor.execute {
         history.clearAll()
+        publish() // publish() drops orphaned annotations via retainAll
+    }
+
+    // ---- WORKSTREAM 04: record-bound annotations (explicit user actions only) ----
+
+    /** Creates/updates one record's label/note/favorite. Storage-only work on the
+     *  executor: by construction it never dispatches a radio action. */
+    fun setAnnotation(recordId: String, label: String?, note: String?, favorite: Boolean) =
+        executor.execute {
+            annotations?.set(
+                recordId, label, note, favorite,
+                knownRecordIds = history.snapshot().map { it.id }.toSet(),
+            )
+            publish()
+        }
+
+    /** Removes one record's annotation (label + note + favorite). */
+    fun deleteAnnotation(recordId: String) = executor.execute {
+        annotations?.delete(recordId)
         publish()
     }
 
@@ -112,10 +142,15 @@ class HistoryController(
         failedClosedNotice: Boolean? = null,
     ) {
         val records = history.snapshot()
+        // WORKSTREAM 04: annotations live EXACTLY as long as their records —
+        // retention sweeps, capacity cap, single deletes and Clear All flow
+        // through this single sync point (orphans dropped, never consulted).
+        annotations?.retainAll(records.map { it.id }.toSet())
         val snapshot = UiState(
             loaded = true,
             consent = history.consent,
             records = records,
+            annotations = annotations?.list() ?: emptyMap(),
             droppedNotice = droppedNotice ?: (history.lastLoadDroppedLines > 0),
             failedClosedNotice = failedClosedNotice ?: history.lastLoadFailedClosed,
         )
