@@ -34,11 +34,19 @@ import com.example.radioobserver.ui.ObservationsFeedScreen
 import com.example.radioobserver.core.radio.ui.FilterPresets
 import com.example.radioobserver.core.radio.ui.ObservationUiState
 import com.example.radioobserver.filters.FilterPresetFileStorage
+import com.example.radioobserver.signature.SignatureUserRuleFileStorage
+import com.example.radioobserver.core.radio.signature.UserSignatureRuleRepository
+import com.example.radioobserver.core.radio.signature.UserSignatureRule
+import com.example.radioobserver.core.radio.signature.UserRuleSelector
+import com.example.radioobserver.core.radio.signature.SignatureCategory
+import com.example.radioobserver.core.radio.signature.UserRuleError
+import com.example.radioobserver.core.radio.signature.UserRuleResult
 import com.example.radioobserver.ui.HistoryDetailScreen
 import com.example.radioobserver.ui.HistoryFilter
 import com.example.radioobserver.ui.HistoryScreen
 import com.example.radioobserver.ui.RadioObserverControlScreen
 import com.example.radioobserver.ui.SettingsScreen
+import com.example.radioobserver.ui.SignatureCatalogScreen
 import com.example.radioobserver.ui.theme.RadioObserverTheme
 import com.example.radioobserver.diag.FieldDiagnostics
 import com.example.radioobserver.diag.DeveloperDiagGate
@@ -110,6 +118,12 @@ class MainActivity : ComponentActivity() {
     // WORKSTREAM 01: selected live view (Liste/Radar/Zaman tüneli) — UI preference
     // ONLY; never persisted, dispatches nothing, dies with the Activity.
     private val feedView = mutableStateOf(LiveViewKind.LIST)
+    // WORKSTREAM 03B: user-defined classification rules — UI state mirror of the
+    // explicit-user-action repository (created/edited/toggled/deleted ONLY by user
+    // gestures). Declared WITHOUT a Context-dependent initializer; the repository
+    // is constructed in onCreate AFTER super.onCreate (WS02 hotfix contract).
+    private lateinit var signatureUserRuleRepository: UserSignatureRuleRepository
+    private val signatureUserRules = mutableStateOf(emptyList<UserSignatureRule>())
     // WORKSTREAM 02: advanced live filtering — UI state ONLY, never persisted on
     // its own (presets are saved EXPLICITLY by the user via the repository).
     // Changing any of it dispatches nothing (no scan, permission, session action).
@@ -165,6 +179,14 @@ class MainActivity : ComponentActivity() {
         filterPresetRepository =
             FilterPresets.Repository(FilterPresetFileStorage(applicationContext))
         filterPresets.value = filterPresetRepository.list()
+        // WORKSTREAM 03B: user classification-catalog repository — same
+        // lifecycle-correct pattern as above (constructed exactly ONCE, here,
+        // never in a property initializer). Loading is fail-closed: a corrupt or
+        // unsupported catalog file yields an empty list and the original file is
+        // never rewritten. Observing devices creates no rule (explicit actions only).
+        signatureUserRuleRepository =
+            UserSignatureRuleRepository(SignatureUserRuleFileStorage(applicationContext))
+        signatureUserRules.value = signatureUserRuleRepository.list()
         // DEBUG-only, privacy-safe field diagnostics (release builds emit nothing).
         FieldDiagnostics.initialize(applicationContext)
         // Eligibility holder: sources read this; only the supervisor (lifecycle-driven) sets it.
@@ -405,12 +427,38 @@ class MainActivity : ComponentActivity() {
                         onDiagVisibilityChange = { visible ->
                             diagVisible.value = visible
                         },
+                        onOpenSignatureCatalog = {
+                            currentScreen.value = AppDestination.SignatureCatalog()
+                        },
                     )
                 }
+                is AppDestination.SignatureCatalog -> SignatureCatalogScreen(
+                    userRules = signatureUserRules.value,
+                    onCreateRule = { title, selector, category ->
+                        val result = signatureUserRuleRepository.create(title, selector, category)
+                        signatureUserRules.value = signatureUserRuleRepository.list()
+                        (result as? UserRuleResult.Error)?.messageKey
+                    },
+                    onUpdateRule = { id, title, selector, category ->
+                        val result = signatureUserRuleRepository.update(id, title, selector, category)
+                        signatureUserRules.value = signatureUserRuleRepository.list()
+                        (result as? UserRuleResult.Error)?.messageKey
+                    },
+                    onSetEnabled = { id, enabled ->
+                        signatureUserRuleRepository.setEnabled(id, enabled)
+                        signatureUserRules.value = signatureUserRuleRepository.list()
+                    },
+                    onDeleteRule = { id ->
+                        signatureUserRuleRepository.delete(id)
+                        signatureUserRules.value = signatureUserRuleRepository.list()
+                    },
+                    onBack = { currentScreen.value = TabScreen(AppTab.SETTINGS) },
+                )
                 is AppDestination.ObservationDetail -> ObservationDetailScreen(
                     state = controlUiState.value,
                     rowId = screen.rowId,
                     onBack = { currentScreen.value = TabScreen(AppTab.FEED) },
+                    userRules = signatureUserRules.value,
                 )
                 is AppDestination.HistoryDetail -> HistoryDetailScreen(
                     record = historyController.state.value.records

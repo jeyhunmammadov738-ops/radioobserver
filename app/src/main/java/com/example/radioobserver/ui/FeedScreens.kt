@@ -72,6 +72,7 @@ import com.example.radioobserver.core.radio.ui.LiveFilter
 import com.example.radioobserver.core.radio.ui.LiveViewKind
 import com.example.radioobserver.core.radio.signature.SignatureCategory
 import com.example.radioobserver.core.radio.signature.SignatureClassifier
+import com.example.radioobserver.core.radio.signature.UserSignatureRule
 import com.example.radioobserver.core.radio.signature.SignatureHint
 import com.example.radioobserver.core.radio.signature.SignatureHintStatus
 import com.example.radioobserver.core.radio.signature.SignatureInput
@@ -394,6 +395,8 @@ fun ObservationDetailScreen(
     state: ObservationUiState,
     rowId: String,
     onBack: () -> Unit,
+    // WORKSTREAM 03B: user-defined catalog for UNVERIFIED suggestions (display-only).
+    userRules: List<UserSignatureRule> = emptyList(),
 ) {
     val detail = ObservationFeedProjection.detailFor(state, rowId)
     Surface(modifier = Modifier.fillMaxSize()) {
@@ -424,7 +427,7 @@ fun ObservationDetailScreen(
             if (detail == null) {
                 EmptyState(stringResource(R.string.detail_unavailable))
             } else {
-                DetailContent(detail)
+                DetailContent(detail, userRules)
             }
         }
     }
@@ -432,7 +435,7 @@ fun ObservationDetailScreen(
 
 /** Grouped presentation of the SAME sanitized fields, one design language everywhere. */
 @Composable
-private fun DetailContent(row: ObservationRowUi) {
+private fun DetailContent(row: ObservationRowUi, userRules: List<UserSignatureRule>) {
     val unknown = stringResource(R.string.value_not_available)
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(Spacing.lg), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
@@ -515,7 +518,7 @@ private fun DetailContent(row: ObservationRowUi) {
     // WORKSTREAM 03A: honest classification provenance section. Explains WHY a hint
     // was suggested (safe field provenance, rule id + catalog version) and shows the
     // truthful Turkish fallback when nothing supportable can be inferred.
-    SignatureHintSection(row)
+    SignatureHintSection(row, userRules)
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(Spacing.lg), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             SectionHeader(stringResource(R.string.detail_section_limits))
@@ -1222,8 +1225,14 @@ private fun PresetNameDialog(
  * the same physical device.
  */
 @Composable
-private fun SignatureHintSection(row: ObservationRowUi) {
-    val hint = remember(row) { SignatureClassifier.classify(SignatureInput.fromRow(row)) }
+private fun SignatureHintSection(row: ObservationRowUi, userRules: List<UserSignatureRule>) {
+    // WS03B: built-in verdict is IDENTICAL to WS03A; user rules only add SEPARATE
+    // unverified suggestions, never an upgrade or override.
+    val hint = remember(row, userRules) {
+        SignatureClassifier.classifyWithUserRules(
+            SignatureInput.fromRow(row), userRules = userRules,
+        )
+    }
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(Spacing.lg),
@@ -1303,6 +1312,34 @@ private fun SignatureHintSection(row: ObservationRowUi) {
                         )
                     }
                 }
+            }
+            if (hint.userSuggestions.isNotEmpty()) {
+                SectionHeader(stringResource(R.string.signature_detail_user_section))
+                hint.userSuggestions.forEach { s ->
+                    Text(
+                        text = stringResource(
+                            R.string.signature_row_hint_format,
+                            signatureCategoryLabel(s.category),
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        text = stringResource(R.string.signature_catalog_unverified_note),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.signature_rule_format, s.ruleId, s.schemaVersion),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.signature_catalog_why_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

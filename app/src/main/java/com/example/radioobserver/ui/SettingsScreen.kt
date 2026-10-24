@@ -63,6 +63,7 @@ fun SettingsScreen(
     onClearAll: () -> Unit,
     onVersionTap: () -> Unit,
     onDiagVisibilityChange: (Boolean) -> Unit,
+    onOpenSignatureCatalog: () -> Unit,
 ) {
     var clearAllConfirm by remember { mutableStateOf(false) }
     var privacyExpanded by remember { mutableStateOf(false) }
@@ -167,6 +168,16 @@ fun SettingsScreen(
             // The version label itself is the tappable target: SEVEN intentional
             // taps unlock the developer section (no visible hint — deliberate
             // developer-only control; nothing is persisted).
+            // WORKSTREAM 03B: user classification-catalog management entry
+            // (Ayarlar owns it; NO fifth bottom tab). Pure navigation.
+            OutlinedButton(
+                onClick = onOpenSignatureCatalog,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp),
+            ) {
+                Text(stringResource(R.string.signature_catalog_open))
+            }
             TextButton(
                 onClick = onVersionTap,
                 modifier = Modifier

@@ -34,6 +34,61 @@ object SignatureClassifier {
     fun classify(
         input: SignatureInput,
         catalog: List<SignatureRule> = SignatureCatalog.RULES,
+    ): SignatureHint = classifyWithUserRules(input, catalog, emptyList())
+
+    /**
+     * WORKSTREAM 03B: classification with the user-defined catalog attached.
+     *
+     * PRECEDENCE (deterministic, JVM-tested): the built-in evaluation is EXACTLY
+     * [classify] — its status, category, rule ids and rationale are never changed,
+     * upgraded or suppressed by user rules. Enabled user rules that match the same
+     * sanitized input are reported SEPARATELY as unverified suggestions
+     * ([SignatureHint.userSuggestions], sorted by rule id); contradictory user
+     * matches are all listed (no arbitrary winner, no false verified identity).
+     * The whole user pass is one additional bounded scan over a finite (<= 30)
+     * rule list using the same exact categorical matching — no regex, no
+     * recursion, no network.
+     */
+    fun classifyWithUserRules(
+        input: SignatureInput,
+        catalog: List<SignatureRule> = SignatureCatalog.RULES,
+        userRules: List<UserSignatureRule>,
+    ): SignatureHint {
+        val builtIn = classifyInternal(input, catalog)
+        if (userRules.isEmpty()) return builtIn
+        val suggestions = userRules
+            .asSequence()
+            .filter { it.enabled }
+            .filter { rule -> matchesSelector(rule.selector, input) }
+            .sortedBy { it.id }
+            .map { rule ->
+                SignatureUserSuggestion(
+                    ruleId = rule.id,
+                    title = rule.title,
+                    category = rule.category,
+                    schemaVersion = UserSignatureRules.SCHEMA_VERSION,
+                )
+            }
+            .toList()
+        return builtIn.copy(userSuggestions = suggestions)
+    }
+
+    /** Exact categorical matching for user selectors ('null' selector part = any). */
+    private fun matchesSelector(
+        selector: UserRuleSelector,
+        input: SignatureInput,
+    ): Boolean {
+        val radioOk = selector.radio == null || selector.radio == input.radio
+        val tokenOk = selector.typeToken == null ||
+            com.example.radioobserver.core.radio.ui.LiveFilter.fold(selector.typeToken.label) ==
+            com.example.radioobserver.core.radio.ui.LiveFilter.fold(input.typeHint.orEmpty())
+        val confidenceOk = selector.confidence == null || selector.confidence == input.confidence
+        return radioOk && tokenOk && confidenceOk
+    }
+
+    private fun classifyInternal(
+        input: SignatureInput,
+        catalog: List<SignatureRule>,
     ): SignatureHint {
         // Bounded single pass: a finite catalog is scanned exactly once per call.
         val matched = catalog.filter { rule ->
@@ -130,6 +185,18 @@ enum class SignatureHintStatus {
 }
 
 /**
+ * An UNVERIFIED, user-defined classification suggestion (WS03B). Displayed with the
+ * explicit provenance label "Kullanıcı tanımlı ipucu — doğrulanmamış"; never merged
+ * into the built-in verdict, never presented as verified identity.
+ */
+data class SignatureUserSuggestion(
+    val ruleId: String,
+    val title: String,
+    val category: SignatureCategory,
+    val schemaVersion: String,
+)
+
+/**
  * The outcome. [category] is null exactly when the status is UNKNOWN or CONFLICT.
  * [matchedRuleIds], [catalogVersion] and [rationale] provide auditable, non-sensitive
  * provenance for UI display ("WHY was this suggested").
@@ -140,6 +207,8 @@ data class SignatureHint(
     val matchedRuleIds: List<String>,
     val catalogVersion: String,
     val rationale: List<String>,
+    /** WS03B: unverified user suggestions, SEPARATE from the built-in verdict. */
+    val userSuggestions: List<SignatureUserSuggestion> = emptyList(),
 ) {
     companion object {
         fun unknown(catalogVersion: String) = SignatureHint(

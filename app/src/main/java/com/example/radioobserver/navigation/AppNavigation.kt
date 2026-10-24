@@ -18,6 +18,13 @@ sealed interface AppDestination {
     /** Full-screen detail overlays; hide the bottom bar (see [isDetail]). */
     data class ObservationDetail(val rowId: String, override val tab: AppTab = AppTab.FEED) : AppDestination
     data class HistoryDetail(val recordId: String, override val tab: AppTab = AppTab.HISTORY) : AppDestination
+
+    /**
+     * WORKSTREAM 03B: classification-catalog management screen, owned by the
+     * Ayarlar tab. Pure management destination — opening it dispatches nothing
+     * (no scan/permission/session effect) and it never reopens stale details.
+     */
+    data class SignatureCatalog(override val tab: AppTab = AppTab.SETTINGS) : AppDestination
 }
 
 enum class AppTab { OBSERVATION, FEED, HISTORY, SETTINGS }
@@ -40,6 +47,7 @@ object AppNavigation {
     fun onBack(current: AppDestination): AppDestination? = when {
         current is AppDestination.ObservationDetail -> AppDestination.TabScreen(AppTab.FEED)
         current is AppDestination.HistoryDetail -> AppDestination.TabScreen(AppTab.HISTORY)
+        current is AppDestination.SignatureCatalog -> AppDestination.TabScreen(AppTab.SETTINGS)
         current.tab == AppTab.OBSERVATION -> null
         else -> AppDestination.TabScreen(AppTab.OBSERVATION)
     }

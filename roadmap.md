@@ -429,7 +429,25 @@ change the WS02 preset codec schema; no fake filter added). WS01 radar correctio
 and WS02 filters/presets/startup-hotfix untouched. +9 core regressions (308/308),
 app 49/49, lint 0 errors/15 warnings. DEBUG APK only. docs/workstream-03a-
 signature-core.md holds the trust-boundary table, catalog provenance and the
-Xiaomi checklist. WS03B and later workstreams NOT started. Details: docs/field-test-start-permission-2026-10-23.md (fifth
+Xiaomi checklist. WS03B and later workstreams NOT started.
+
+POST-ROADMAP WORKSTREAM 03B (2026-10-24, developer-approved): privacy-safe local
+classification catalog + explainable rule management on the WS03A engine. The five
+built-in rules remain IMMUTABLE (JVM-tested identical behavior); user rules are a
+separate bounded catalog (<= 30, versioned ws03b-user-catalog-v1, atomic fail-closed
+app-private storage, separate from History and WS02 presets) built ONLY from a finite
+code-owned categorical whitelist (source, one of the parser's own 4 public-format
+type-hint tokens, format confidence) — structurally NO name/SSID/address/RSSI/free
+text can enter a rule (selector has no String field; title is display-only and never
+matched). Precedence: built-in verdict never overridden; user matches are separate
+UNVERIFIED suggestions ('Kullanıcı tanımlı ipucu — doğrulanmamış'), contradictions
+listed, UNKNOWN/CONFLICT preserved. UI: 'Sınıflandırma kataloğu' management screen
+from Ayarlar (NO fifth tab), built-in read-only, create/edit/toggle/delete with
+validation + confirmation, plus a user-suggestions block in the observation detail.
+WS02 startup hotfix honored (repository constructed in onCreate after super.onCreate).
++13 core regressions (321/321), app 49/49, lint 0 errors/15 warnings (baseline kept).
+DEBUG APK only. docs/workstream-03b-user-catalog.md holds the whitelist, schema,
+corruption policy, test matrix and Xiaomi checklist. WS04 NOT started. Details: docs/field-test-start-permission-2026-10-23.md (fifth
 section).
 
 ## Phase 3 — Friendly Compose UI & Live Observation State (COMPLETE: 10/10 done)
