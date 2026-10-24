@@ -138,8 +138,15 @@ object LiveViewProjection {
      * spreads consecutive ordinals ~132.7° apart and the jitter is decorrelated via
      * an independent avalanche constant.
      */
-    fun radarProjection(state: ObservationUiState, filter: ObservationFeedProjection.FeedFilter): RadarProjection {
-        val rows = ObservationFeedProjection.rowsFor(state, filter)
+    fun radarProjection(
+        state: ObservationUiState,
+        filter: ObservationFeedProjection.FeedFilter,
+        criteria: LiveFilter.AdvancedCriteria = LiveFilter.AdvancedCriteria(),
+        query: String = "",
+    ): RadarProjection {
+        // WORKSTREAM 02: advanced filtering happens BEFORE marker layout and
+        // cluster accounting — the radar invariant counts the SAME eligible set.
+        val rows = LiveFilter.rowsFor(state, filter, criteria, query)
         val displayed = rows.take(RADAR_MAX_DISPLAYED_DOTS)
         val dots = displayed.map { row ->
             val ringIndex = RING_ORDER.indexOf(row.signalBucket).let {
@@ -232,8 +239,13 @@ object LiveViewProjection {
      * No first-seen events exist or are fabricated — ordering uses ONLY
      * lastSeenAtEpochMs, exactly as proven by the sanitized model.
      */
-    fun timelineProjection(state: ObservationUiState, filter: ObservationFeedProjection.FeedFilter): List<TimelineEntry> =
-        ObservationFeedProjection.rowsFor(state, filter)
+    fun timelineProjection(
+        state: ObservationUiState,
+        filter: ObservationFeedProjection.FeedFilter,
+        criteria: LiveFilter.AdvancedCriteria = LiveFilter.AdvancedCriteria(),
+        query: String = "",
+    ): List<TimelineEntry> =
+        LiveFilter.rowsFor(state, filter, criteria, query)
             .map { row ->
                 TimelineEntry(
                     rowId = row.rowId,
@@ -253,10 +265,15 @@ object LiveViewProjection {
      * Membership truth: all three views render EXACTLY the same sanitized,
      * filtered row set. This function IS that contract, testable on the host.
      */
-    fun sameMembership(state: ObservationUiState, filter: ObservationFeedProjection.FeedFilter): Boolean {
-        val rows = ObservationFeedProjection.rowsFor(state, filter)
-        val radar = radarProjection(state, filter)
-        val timeline = timelineProjection(state, filter)
+    fun sameMembership(
+        state: ObservationUiState,
+        filter: ObservationFeedProjection.FeedFilter,
+        criteria: LiveFilter.AdvancedCriteria = LiveFilter.AdvancedCriteria(),
+        query: String = "",
+    ): Boolean {
+        val rows = LiveFilter.rowsFor(state, filter, criteria, query)
+        val radar = radarProjection(state, filter, criteria, query)
+        val timeline = timelineProjection(state, filter, criteria, query)
         val radarIds = radar.markers.flatMap { marker -> marker.members.map { it.rowId } }.toSet()
         return rows.map { it.rowId }.toSet() == radarIds &&
             rows.size == radar.representedRecords + radar.overflowCount &&

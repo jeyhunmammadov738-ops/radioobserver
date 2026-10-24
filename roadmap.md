@@ -386,7 +386,21 @@ clusters for residual visual merges (accounting invariant singles + cluster coun
 overflow == source rows, host-tested; members reachable in the adjoining list).
 Also fixed: radar projection now honors the CURRENT source filter (was hard-wired
 ALL). 4 new core regressions (282/282 core, 45/45 app, lint 0/15). DEBUG APK only.
-Phone retest of the 11-row scenario required. Details: docs/field-test-start-permission-2026-10-23.md (fifth
+Phone retest of the 11-row scenario required.
+
+POST-ROADMAP WORKSTREAM 02 (2026-10-24, developer-approved): advanced live filtering
+and saved filter presets (docs/workstream-02-advanced-filters.md). One shared pure
+boundary (core LiveFilter.rowsFor) feeds Liste/Radar/Zaman tüneli with identical
+membership (OR-within-category, AND-across, empty = unrestricted, UNKNOWN never
+silent); Radar filters BEFORE layout so the cluster/overflow invariant keeps holding;
+result accounting "x / y kayıt gösteriliyor"; filter-excluded empties never claim
+"no devices found". Filtreler panel with explicit Uygula/Sıfırla, transient Turkish
+-folded name search (never persisted), and user-managed presets (max 20, validated
+names, deterministic duplicate rejection) stored atomically app-private
+(filter_presets_v1.txt, history store untouched; corrupt entries fail closed
+without deleting data; preset ids are repository bookkeeping, never device
+identity). +17 core regressions (299/299), app 45/45, lint 0 errors/15 warnings.
+DEBUG APK only. Xiaomi retest required (steps in the workstream doc). Details: docs/field-test-start-permission-2026-10-23.md (fifth
 section).
 
 ## Phase 3 — Friendly Compose UI & Live Observation State (COMPLETE: 10/10 done)

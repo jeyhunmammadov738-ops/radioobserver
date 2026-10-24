@@ -13,13 +13,22 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
@@ -58,6 +67,8 @@ import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
+import com.example.radioobserver.core.radio.ui.FilterPresets
+import com.example.radioobserver.core.radio.ui.LiveFilter
 import com.example.radioobserver.core.radio.ui.LiveViewKind
 import com.example.radioobserver.core.radio.ui.LiveViewProjection
 import com.example.radioobserver.ui.components.CompactInfoRow
@@ -92,9 +103,27 @@ fun ObservationsFeedScreen(
     // is never persisted. Short-lived Activity state, dies with the process.
     viewKind: LiveViewKind,
     onViewKindChange: (LiveViewKind) -> Unit,
+    // WORKSTREAM 02: advanced live filtering + explicit user-managed presets.
+    // Same purity contract: every callback below is UI state or app-private
+    // preset storage mutation — nothing starts/stops a session, requests a
+    // permission, refreshes cached Wi-Fi or touches stored History.
+    criteria: LiveFilter.AdvancedCriteria,
+    searchQuery: String,
+    onApplyAdvanced: (LiveFilter.AdvancedCriteria, String) -> Unit,
+    onResetAdvanced: () -> Unit,
+    presets: List<FilterPresets.FilterPreset>,
+    onSavePreset: (String) -> Unit,
+    onApplyPreset: (String) -> Unit,
+    onRenamePreset: (String, String) -> Unit,
+    onDeletePreset: (String) -> Unit,
     onRowSelect: (String) -> Unit,
 ) {
-    val rows = ObservationFeedProjection.rowsFor(state, filter)
+    // THE single shared boundary (LiveFilter.rowsFor) feeds ALL THREE views.
+    val rows = LiveFilter.rowsFor(state, filter, criteria, searchQuery)
+    val advancedActive = LiveFilter.activeCriteriaCount(criteria, searchQuery) > 0
+    // Non-persisted panel visibility; dies with the Activity like every other
+    // Gözlemler UI preference.
+    var filterPanelOpen by remember { mutableStateOf(false) }
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.padding(horizontal = Spacing.lg)) {
@@ -114,6 +143,19 @@ fun ObservationsFeedScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = Spacing.xs),
                 )
+                // WORKSTREAM 02: honest result accounting — session observations vs
+                // currently displayed ones (only when advanced filtering is active).
+                if (advancedActive) {
+                    Text(
+                        text = pluralStringResource(
+                            R.plurals.filter_result_count,
+                            rows.size, rows.size, state.rows.size,
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = Spacing.xs),
+                    )
+                }
             }
             // WORKSTREAM 01 view switcher: Liste / Radar / Zaman tüneli. Same
             // 48dp-target FilterChip pattern as the source filters; pure UI state.
@@ -173,10 +215,43 @@ fun ObservationsFeedScreen(
                     label = { Text(stringResource(R.string.filter_wifi)) },
                     modifier = Modifier.heightIn(min = 48.dp),
                 )
+                // WORKSTREAM 02: advanced filter control with an applied-criteria
+                // badge. PURE UI state: expanding it dispatches nothing.
+                OutlinedButton(
+                    onClick = { filterPanelOpen = !filterPanelOpen },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    val active = LiveFilter.activeCriteriaCount(criteria, searchQuery)
+                    Text(
+                        if (active > 0) stringResource(R.string.filters_active_badge_format, active)
+                        else stringResource(R.string.filters_button),
+                    )
+                }
+            }
+            if (filterPanelOpen) {
+                FilterPanel(
+                    appliedCriteria = criteria,
+                    appliedQuery = searchQuery,
+                    presets = presets,
+                    onApplyAdvanced = onApplyAdvanced,
+                    onResetAdvanced = onResetAdvanced,
+                    onSavePreset = onSavePreset,
+                    onApplyPreset = onApplyPreset,
+                    onRenamePreset = onRenamePreset,
+                    onDeletePreset = onDeletePreset,
+                )
             }
             // The SAME honest empty taxonomy applies to ALL three views: a view
-            // switch never invents content and never changes eligibility.
-            when (ObservationFeedProjection.emptyKind(state, filter)) {
+            // switch never invents content and never changes eligibility. With an
+            // active ADVANCED filter, exclusion is reported as filtering (never
+            // as "no devices found"): the filter_no_matches state keeps the
+            // session-vs-display accounting above visible.
+            val emptyKind = when {
+                rows.isNotEmpty() -> null
+                state.rows.isNotEmpty() -> FeedEmptyKind.NO_MATCHES_FOR_FILTER
+                else -> ObservationFeedProjection.emptyKind(state, filter)
+            }
+            when (emptyKind) {
                 null -> when (viewKind) {
                     LiveViewKind.LIST -> LazyColumn(
                         modifier = Modifier.fillMaxSize(),
@@ -193,18 +268,26 @@ fun ObservationsFeedScreen(
                         // QA 2026-10-23: the radar projection now honors the CURRENT
                         // source filter (previously hard-wired to ALL — inconsistent
                         // with Liste/Zaman tüneli whenever Bluetooth/Wi-Fi was chosen).
+                        // WORKSTREAM 02: the SAME advanced criteria + search feed it.
                         filter = filter,
+                        criteria = criteria,
+                        query = searchQuery,
                         onRowSelect = onRowSelect,
                     )
                     LiveViewKind.TIMELINE -> TimelineView(
                         state = state,
                         filter = filter,
+                        criteria = criteria,
+                        query = searchQuery,
                         onRowSelect = onRowSelect,
                     )
                 }
                 FeedEmptyKind.SESSION_ACTIVE_NO_OBSERVATIONS -> EmptyState(stringResource(R.string.empty_feed_note))
                 FeedEmptyKind.NO_SESSION_NO_OBSERVATIONS -> EmptyState(stringResource(R.string.feed_empty_no_session))
-                FeedEmptyKind.NO_MATCHES_FOR_FILTER -> EmptyState(stringResource(R.string.feed_empty_filter))
+                FeedEmptyKind.NO_MATCHES_FOR_FILTER -> EmptyState(
+                    if (advancedActive) stringResource(R.string.filter_no_matches)
+                    else stringResource(R.string.feed_empty_filter),
+                )
             }
         }
     }
@@ -475,10 +558,14 @@ private fun timeText(epochMs: Long): String = DetailTime.plainClockText(epochMs)
 private fun RadarView(
     state: ObservationUiState,
     filter: FeedFilter,
+    criteria: LiveFilter.AdvancedCriteria,
+    query: String,
     onRowSelect: (String) -> Unit,
 ) {
-    val projection = LiveViewProjection.radarProjection(state, filter)
-    val rowsForRadar = ObservationFeedProjection.rowsFor(state, filter)
+    // WORKSTREAM 02: identical eligibility as Liste — filtering happens BEFORE
+    // marker layout and cluster accounting (JVM-tested invariant).
+    val projection = LiveViewProjection.radarProjection(state, filter, criteria, query)
+    val rowsForRadar = LiveFilter.rowsFor(state, filter, criteria, query)
     Column(modifier = Modifier.fillMaxSize()) {
         // Prominent, accessible honesty copy — always visible, both semantics and text.
         Text(
@@ -701,9 +788,13 @@ private fun RadarListRow(row: ObservationRowUi, onSelect: () -> Unit) {
 private fun TimelineView(
     state: ObservationUiState,
     filter: FeedFilter,
+    criteria: LiveFilter.AdvancedCriteria,
+    query: String,
     onRowSelect: (String) -> Unit,
 ) {
-    val entries = LiveViewProjection.timelineProjection(state, filter)
+    // WORKSTREAM 02: identical eligibility as Liste; ordering stays the honest
+    // last-seen chronology with the stable rowId tie-break.
+    val entries = LiveViewProjection.timelineProjection(state, filter, criteria, query)
     Column(modifier = Modifier.fillMaxSize()) {
         Text(
             text = stringResource(R.string.timeline_note),
@@ -763,4 +854,333 @@ private fun TimelineRow(entry: LiveViewProjection.TimelineEntry, onSelect: () ->
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+}
+
+/**
+ * WORKSTREAM 02 — advanced filter panel + saved preset management, all inside the
+ * existing Gözlemler tab (no new navigation destination). Purity contract: the panel
+ * edits a LOCAL DRAFT and commits ONLY on Uygula (explicit Apply/Reset actions);
+ * applying a preset updates the applied state which resyncs this draft. Nothing
+ * here dispatches sessions, permissions or History writes. The preset section
+ * delegates to the app-private repository via MainActivity callbacks.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FilterPanel(
+    appliedCriteria: LiveFilter.AdvancedCriteria,
+    appliedQuery: String,
+    presets: List<FilterPresets.FilterPreset>,
+    onApplyAdvanced: (LiveFilter.AdvancedCriteria, String) -> Unit,
+    onResetAdvanced: () -> Unit,
+    onSavePreset: (String) -> Unit,
+    onApplyPreset: (String) -> Unit,
+    onRenamePreset: (String, String) -> Unit,
+    onDeletePreset: (String) -> Unit,
+) {
+    // Draft state: resyncs whenever the applied state changes externally
+    // (preset applied / reset) so the panel always reflects reality.
+    var draftCriteria by remember(appliedCriteria) { mutableStateOf(appliedCriteria) }
+    var draftQuery by remember(appliedQuery) { mutableStateOf(appliedQuery) }
+    var showSaveDialog by remember { mutableStateOf(false) }
+    var renameTarget by remember { mutableStateOf<FilterPresets.FilterPreset?>(null) }
+    var deleteTarget by remember { mutableStateOf<FilterPresets.FilterPreset?>(null) }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Spacing.lg, vertical = Spacing.xs),
+    ) {
+        Column(modifier = Modifier.padding(Spacing.md)) {
+            Text(
+                text = stringResource(R.string.filter_panel_title),
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.semantics { heading() },
+            )
+            Text(
+                text = if (LiveFilter.activeCriteriaCount(appliedCriteria, appliedQuery) == 0) {
+                    stringResource(R.string.filter_summary_unrestricted)
+                } else {
+                    val applied = LiveFilter.activeCriteriaCount(appliedCriteria, appliedQuery)
+                    pluralStringResource(R.plurals.filter_summary_count, applied, applied)
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            // Sinyal kategorisi: verified taxonomy only, multi-select (OR).
+            FilterGroupLabel(stringResource(R.string.filter_category_signal))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                listOf(
+                    SignalBucket.IMMEDIATE to R.string.signal_immediate,
+                    SignalBucket.NEAR to R.string.signal_near,
+                    SignalBucket.FAR to R.string.signal_far,
+                    SignalBucket.UNAVAILABLE to R.string.signal_unavailable,
+                ).forEach { (bucket, label) ->
+                    FilterChip(
+                        selected = bucket in draftCriteria.signalBuckets,
+                        onClick = {
+                            draftCriteria = draftCriteria.copy(
+                                signalBuckets =
+                                    if (bucket in draftCriteria.signalBuckets)
+                                        draftCriteria.signalBuckets - bucket
+                                    else draftCriteria.signalBuckets + bucket,
+                            )
+                        },
+                        label = { Text(stringResource(label)) },
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    )
+                }
+            }
+
+            // Tazelik: FRESH/STALE/UNKNOWN multi-select; UNKNOWN is a deliberate
+            // choice, never a silent fallback.
+            FilterGroupLabel(stringResource(R.string.filter_category_freshness))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                listOf(
+                    FreshnessState.FRESH to R.string.freshness_fresh,
+                    FreshnessState.STALE to R.string.freshness_stale,
+                    FreshnessState.UNKNOWN to R.string.freshness_unknown,
+                ).forEach { (fresh, label) ->
+                    FilterChip(
+                        selected = fresh in draftCriteria.freshness,
+                        onClick = {
+                            draftCriteria = draftCriteria.copy(
+                                freshness =
+                                    if (fresh in draftCriteria.freshness)
+                                        draftCriteria.freshness - fresh
+                                    else draftCriteria.freshness + fresh,
+                            )
+                        },
+                        label = { Text(stringResource(label)) },
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    )
+                }
+            }
+
+            // Üretici ipucu: known/unknown toggle; hints are never identity proof.
+            FilterGroupLabel(stringResource(R.string.filter_category_manufacturer))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                FilterChip(
+                    selected = draftCriteria.manufacturerKnownOnly == true,
+                    onClick = {
+                        draftCriteria = draftCriteria.copy(
+                            manufacturerKnownOnly =
+                                if (draftCriteria.manufacturerKnownOnly == true) null else true,
+                        )
+                    },
+                    label = { Text(stringResource(R.string.filter_manufacturer_known)) },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                )
+                FilterChip(
+                    selected = draftCriteria.manufacturerKnownOnly == false,
+                    onClick = {
+                        draftCriteria = draftCriteria.copy(
+                            manufacturerKnownOnly =
+                                if (draftCriteria.manufacturerKnownOnly == false) null else false,
+                        )
+                    },
+                    label = { Text(stringResource(R.string.filter_manufacturer_unknown)) },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                )
+            }
+
+            // Geçici metin arama: sanitized display names only; never persisted.
+            OutlinedTextField(
+                value = draftQuery,
+                onValueChange = { draftQuery = it },
+                label = { Text(stringResource(R.string.filter_search_label)) },
+                supportingText = { Text(stringResource(R.string.filter_search_note)) },
+                singleLine = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = Spacing.sm),
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = Spacing.sm),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                Button(
+                    onClick = { onApplyAdvanced(draftCriteria, draftQuery) },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text(stringResource(R.string.filter_apply)) }
+                OutlinedButton(
+                    onClick = {
+                        // Reset: unrestricted criteria + cleared search, both draft
+                        // and applied (Restores the All-sources default).
+                        draftCriteria = LiveFilter.AdvancedCriteria()
+                        draftQuery = ""
+                        onResetAdvanced()
+                    },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text(stringResource(R.string.filter_reset)) }
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = Spacing.sm))
+
+            // Kayıtlı ön ayarlar: explicit user-managed only (never auto-saved).
+            Text(
+                text = stringResource(R.string.filter_presets_title),
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.semantics { heading() },
+            )
+            if (presets.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.filter_presets_empty),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                presets.forEach { preset ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                    ) {
+                        Text(
+                            text = preset.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(onClick = { onApplyPreset(preset.id) }) {
+                            Text(stringResource(R.string.filter_preset_apply))
+                        }
+                        TextButton(onClick = { renameTarget = preset }) {
+                            Text(stringResource(R.string.filter_preset_rename))
+                        }
+                        TextButton(onClick = { deleteTarget = preset }) {
+                            Text(stringResource(R.string.filter_preset_delete))
+                        }
+                    }
+                }
+            }
+            OutlinedButton(
+                onClick = { showSaveDialog = true },
+                modifier = Modifier
+                    .padding(top = Spacing.xs)
+                    .heightIn(min = 48.dp),
+            ) { Text(stringResource(R.string.filter_preset_save)) }
+        }
+    }
+
+    // --- Preset dialogs (save / rename / delete confirmation) ---
+
+    if (showSaveDialog) {
+        PresetNameDialog(
+            title = stringResource(R.string.filter_preset_save_title),
+            initialName = "",
+            presets = presets,
+            onDismiss = { showSaveDialog = false },
+            onConfirm = { name ->
+                onSavePreset(name)
+                showSaveDialog = false
+            },
+        )
+    }
+    renameTarget?.let { target ->
+        PresetNameDialog(
+            title = stringResource(R.string.filter_preset_rename_title),
+            initialName = target.name,
+            presets = presets.filter { it.id != target.id },
+            onDismiss = { renameTarget = null },
+            onConfirm = { name ->
+                onRenamePreset(target.id, name)
+                renameTarget = null
+            },
+        )
+    }
+    deleteTarget?.let { target ->
+        AlertDialog(
+            onDismissRequest = { deleteTarget = null },
+            title = { Text(stringResource(R.string.filter_preset_delete_title)) },
+            text = {
+                Text(stringResource(R.string.filter_preset_delete_confirm, target.name))
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDeletePreset(target.id)
+                    deleteTarget = null
+                }) { Text(stringResource(R.string.filter_preset_delete)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteTarget = null }) {
+                    Text(stringResource(R.string.dialog_cancel))
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun FilterGroupLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .padding(top = Spacing.sm)
+            .semantics { heading() },
+    )
+}
+
+/**
+ * Save/rename dialog with LOCAL validation (non-blank, ≤40 chars, no duplicate
+ * against the current list, case-folded). The repository re-validates — the local
+ * check only keeps the dialog honest and deterministic.
+ */
+@Composable
+private fun PresetNameDialog(
+    title: String,
+    initialName: String,
+    presets: List<FilterPresets.FilterPreset>,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    var name by remember { mutableStateOf(initialName) }
+    val trimmed = name.trim()
+    val invalid = trimmed.isBlank() || trimmed.length > FilterPresets.Repository.MAX_NAME_LENGTH
+    val duplicate = presets.any { LiveFilter.fold(it.name) == LiveFilter.fold(trimmed) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { if (it.length <= 60) name = it },
+                    label = { Text(stringResource(R.string.filter_preset_name_label)) },
+                    singleLine = true,
+                    isError = invalid || duplicate,
+                )
+                if (invalid) {
+                    Text(
+                        text = stringResource(R.string.filter_preset_name_invalid),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                } else if (duplicate) {
+                    Text(
+                        text = stringResource(R.string.filter_preset_name_duplicate),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = !invalid && !duplicate,
+                onClick = { onConfirm(trimmed) },
+            ) { Text(stringResource(R.string.filter_preset_save)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.dialog_cancel)) }
+        },
+    )
 }

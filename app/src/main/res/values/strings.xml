@@ -62,6 +62,43 @@
         <item quantity="other">%1$d kaynak daha var; şema sınırlı olduğu için listede gösteriliyor.</item>
     </plurals>
     <string name="radar_all_unknown_note">Hiçbir kaynağın sinyal kategorisi bilinmiyor; halkalar bir yakınlık anlamı taşımaz.</string>
+    <string name="filters_button">Filtreler</string>
+    <string name="filters_active_badge_format">Filtreler (%1$d)</string>
+    <string name="filter_panel_title">Gelişmiş süzgeçler</string>
+    <string name="filter_summary_unrestricted">Tüm kayıtlar gösteriliyor</string>
+    <plurals name="filter_summary_count">
+        <item quantity="one">%1$d kriter etkin</item>
+        <item quantity="other">%1$d kriter etkin</item>
+    </plurals>
+    <string name="filter_category_signal">Sinyal kategorisi</string>
+    <string name="filter_category_freshness">Tazelik</string>
+    <string name="filter_category_manufacturer">Üretici ipucu</string>
+    <string name="filter_manufacturer_known">Bilinen üretici</string>
+    <string name="filter_manufacturer_unknown">Bilinmeyen üretici</string>
+    <string name="filter_search_label">Ara (geçici)</string>
+    <string name="filter_search_note">Arama yalnızca görünür adlarda yapılır; kayıtlı ön ayarlara saklanmaz.</string>
+    <string name="filter_apply">Uygula</string>
+    <string name="filter_reset">Sıfırla</string>
+    <plurals name="filter_result_count">
+        <item quantity="one">%1$d / %2$d kayıt gösteriliyor</item>
+        <item quantity="other">%1$d / %2$d kayıt gösteriliyor</item>
+    </plurals>
+    <string name="filter_no_matches">Seçili süzgeçlerle eşleşen kayıt yok. Bu, yakında cihaz olmadığını kanıtlamaz; süzgeçleri gevşetmeyi dene.</string>
+    <string name="filter_presets_title">Kayıtlı ön ayarlar</string>
+    <string name="filter_presets_empty">Henüz kayıtlı ön ayar yok.</string>
+    <string name="filter_preset_save">Ön ayar olarak kaydet</string>
+    <string name="filter_preset_apply">Uygula</string>
+    <string name="filter_preset_rename">Yeniden adlandır</string>
+    <string name="filter_preset_delete">Sil</string>
+    <string name="filter_preset_delete_title">Ön ayarı sil</string>
+    <string name="filter_preset_delete_confirm">“%1$s” ön ayarı silinsin mi?</string>
+    <string name="filter_preset_save_title">Ön ayarı kaydet</string>
+    <string name="filter_preset_rename_title">Ön ayarı yeniden adlandır</string>
+    <string name="filter_preset_name_label">Ön ayar adı</string>
+    <string name="filter_preset_name_invalid">Ad boş olamaz ve en fazla 40 karakter olabilir.</string>
+    <string name="filter_preset_name_duplicate">Bu adda bir ön ayar zaten var.</string>
+    <string name="dialog_cancel">Vazgeç</string>
+
     <string name="radar_legend_cluster">Sayı yazılı daire, aynı noktada üst üste binen kaynak sayısını gösterir; üyelerini alttaki listede inceleyebilirsin.</string>
     <plurals name="a11y_radar_cluster">
         <item quantity="one">%1$d kaynak üst üste bindi; üyesini aşağıdaki listede inceleyebilirsin.</item>

@@ -26,11 +26,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.res.stringResource
 import com.example.radioobserver.R
+import com.example.radioobserver.core.radio.ui.LiveFilter
 import com.example.radioobserver.core.radio.ui.LiveViewKind
 import com.example.radioobserver.core.radio.ui.ObservationFeedProjection.FeedFilter
 import com.example.radioobserver.ui.ObservationDetailScreen
 import com.example.radioobserver.ui.ObservationsFeedScreen
+import com.example.radioobserver.core.radio.ui.FilterPresets
 import com.example.radioobserver.core.radio.ui.ObservationUiState
+import com.example.radioobserver.filters.FilterPresetFileStorage
 import com.example.radioobserver.ui.HistoryDetailScreen
 import com.example.radioobserver.ui.HistoryFilter
 import com.example.radioobserver.ui.HistoryScreen
@@ -107,6 +110,15 @@ class MainActivity : ComponentActivity() {
     // WORKSTREAM 01: selected live view (Liste/Radar/Zaman tüneli) — UI preference
     // ONLY; never persisted, dispatches nothing, dies with the Activity.
     private val feedView = mutableStateOf(LiveViewKind.LIST)
+    // WORKSTREAM 02: advanced live filtering — UI state ONLY, never persisted on
+    // its own (presets are saved EXPLICITLY by the user via the repository).
+    // Changing any of it dispatches nothing (no scan, permission, session action).
+    private val advancedCriteria = mutableStateOf(LiveFilter.AdvancedCriteria())
+    private val searchQuery = mutableStateOf("")
+    // Explicit user-managed presets, app-private and restart-surviving.
+    private val filterPresetRepository =
+        FilterPresets.Repository(FilterPresetFileStorage(applicationContext))
+    private val filterPresets = mutableStateOf(filterPresetRepository.list())
     private val historyFilter = mutableStateOf(HistoryFilter.ALL)
 
     // DEBUG-only, hidden-by-default FieldDiag-04 visibility (post-roadmap policy):
@@ -299,6 +311,44 @@ class MainActivity : ComponentActivity() {
                         onFilterChange = { feedFilter.value = it },
                         viewKind = feedView.value,
                         onViewKindChange = { feedView.value = it },
+                        // WORKSTREAM 02: advanced filter + preset wiring. All pure
+                        // UI-state/repository mutations — nothing here starts/stops
+                        // a session, requests permission or touches History.
+                        criteria = advancedCriteria.value,
+                        searchQuery = searchQuery.value,
+                        onApplyAdvanced = { appliedCriteria, appliedQuery ->
+                            advancedCriteria.value = appliedCriteria
+                            searchQuery.value = appliedQuery
+                        },
+                        onResetAdvanced = {
+                            advancedCriteria.value = LiveFilter.AdvancedCriteria()
+                            searchQuery.value = ""
+                        },
+                        presets = filterPresets.value,
+                        onSavePreset = { name ->
+                            filterPresetRepository.save(
+                                name, feedFilter.value, advancedCriteria.value,
+                            )
+                            filterPresets.value = filterPresetRepository.list()
+                        },
+                        onApplyPreset = { presetId ->
+                            // Deterministic reconciliation: applying a preset adopts
+                            // its source filter + criteria and CLEARS the temporary
+                            // search text (search is transient by design).
+                            filterPresetRepository.findById(presetId)?.let { preset ->
+                                feedFilter.value = preset.sourceFilter
+                                advancedCriteria.value = preset.criteria
+                                searchQuery.value = ""
+                            }
+                        },
+                        onRenamePreset = { presetId, newName ->
+                            filterPresetRepository.rename(presetId, newName)
+                            filterPresets.value = filterPresetRepository.list()
+                        },
+                        onDeletePreset = { presetId ->
+                            filterPresetRepository.delete(presetId)
+                            filterPresets.value = filterPresetRepository.list()
+                        },
                         onRowSelect = { rowId ->
                             currentScreen.value = AppDestination.ObservationDetail(rowId)
                         },
