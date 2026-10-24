@@ -36,6 +36,8 @@ import com.example.radioobserver.core.radio.ui.ObservationUiState
 import com.example.radioobserver.filters.FilterPresetFileStorage
 import com.example.radioobserver.signature.SignatureUserRuleFileStorage
 import com.example.radioobserver.history.HistoryAnnotationFileStorage
+import com.example.radioobserver.history.SessionGroupController
+import com.example.radioobserver.history.SessionGroupFileStorage
 import com.example.radioobserver.core.radio.history.HistoryAnnotationPersistence
 import com.example.radioobserver.core.radio.ui.LiveFavorites
 import com.example.radioobserver.core.radio.alerts.AlertTrigger
@@ -53,6 +55,9 @@ import com.example.radioobserver.ui.HistoryFilter
 import com.example.radioobserver.ui.HistoryScreen
 import com.example.radioobserver.ui.RadioObserverControlScreen
 import com.example.radioobserver.ui.SettingsScreen
+import com.example.radioobserver.ui.SessionGroupCompareScreen
+import com.example.radioobserver.ui.SessionGroupDetailScreen
+import com.example.radioobserver.ui.SessionGroupsScreen
 import com.example.radioobserver.ui.SignatureCatalogScreen
 import com.example.radioobserver.ui.theme.RadioObserverTheme
 import com.example.radioobserver.diag.FieldDiagnostics
@@ -187,6 +192,10 @@ class MainActivity : ComponentActivity() {
     // The controller is the one-way live→history bridge; all its work is inert for
     // observation (no session, permission or scanning state can change from here).
     private lateinit var historyController: HistoryController
+    // WORKSTREAM 05: named analytical groups over ALREADY-SAVED records. Same
+    // lifecycle-safe pattern: lateinit, constructed in onCreate AFTER
+    // super.onCreate (WS02 startup hotfix contract).
+    private lateinit var sessionGroupController: SessionGroupController
 
     override fun onResume() {
         super.onResume()
@@ -280,6 +289,12 @@ class MainActivity : ComponentActivity() {
             HistoryAnnotationFileStorage(applicationContext) as HistoryAnnotationPersistence,
         )
         historyController.initialize()
+        // WORKSTREAM 05: separate versioned app-private metadata store — group
+        // operations NEVER touch the History store, consent or radio sessions.
+        sessionGroupController = SessionGroupController(
+            SessionGroupFileStorage(applicationContext),
+        )
+        sessionGroupController.initialize()
         sessionOrchestrator = ObservationSessionOrchestrator(
             supervisor = observationSupervisor,
             pipelineFactory = { ObservationPipeline(clock = { System.currentTimeMillis() }) },
@@ -341,6 +356,14 @@ class MainActivity : ComponentActivity() {
             // NOTHING on their own. The state is the orchestrator's sanitized snapshot.
             RadioObserverTheme {
             val destination = currentScreen.value
+            // WORKSTREAM 05: retention/deletion reconciliation — every History
+            // snapshot change drops dangling group references (idempotent, pure
+            // metadata cleanup; never resurrects records).
+            androidx.compose.runtime.LaunchedEffect(historyController.state.value) {
+                sessionGroupController.syncWithRecords(
+                    historyController.state.value.records.map { it.id }.toSet(),
+                )
+            }
             // One deterministic back policy for every destination (JVM-tested):
             // details return to their parent tab, non-primary tabs return to Gözlem,
             // Gözlem hands Back to the system.
@@ -511,6 +534,9 @@ class MainActivity : ComponentActivity() {
                             currentScreen.value = AppDestination.HistoryDetail(recordId)
                         },
                         onOpenSettings = { currentScreen.value = TabScreen(AppTab.SETTINGS) },
+                        // WORKSTREAM 05: analytical groups live INSIDE the Geçmiş
+                        // area (no fifth tab). Opening dispatches NOTHING.
+                        onOpenGroups = { currentScreen.value = AppDestination.SessionGroups() },
                     )
                     AppTab.SETTINGS -> SettingsScreen(
                         state = historyController.state.value,
@@ -537,6 +563,42 @@ class MainActivity : ComponentActivity() {
                         },
                     )
                 }
+                is AppDestination.SessionGroups -> SessionGroupsScreen(
+                    state = sessionGroupController.state.value,
+                    records = historyController.state.value.records,
+                    onCreate = { sessionGroupController.create(it) },
+                    onRename = { id, name -> sessionGroupController.rename(id, name) },
+                    onDelete = { id -> sessionGroupController.delete(id) },
+                    onOpenDetail = { id ->
+                        currentScreen.value = AppDestination.SessionGroupDetail(id)
+                    },
+                    onOpenCompare = { currentScreen.value = AppDestination.SessionGroupCompare() },
+                    onDismissNotices = { sessionGroupController.dismissNotices() },
+                    onBack = { currentScreen.value = TabScreen(AppTab.HISTORY) },
+                )
+                is AppDestination.SessionGroupDetail -> SessionGroupDetailScreen(
+                    group = sessionGroupController.state.value.groups
+                        .firstOrNull { it.id == screen.groupId },
+                    records = historyController.state.value.records,
+                    onAddRecord = { groupId, recordId ->
+                        sessionGroupController.addRecord(
+                            groupId, recordId,
+                            historyController.state.value.records.map { it.id }.toSet(),
+                        )
+                    },
+                    onRemoveRecord = { groupId, recordId ->
+                        sessionGroupController.removeRecord(groupId, recordId)
+                    },
+                    onOpenHistoryDetail = { recordId ->
+                        currentScreen.value = AppDestination.HistoryDetail(recordId)
+                    },
+                    onBack = { currentScreen.value = AppDestination.SessionGroups() },
+                )
+                is AppDestination.SessionGroupCompare -> SessionGroupCompareScreen(
+                    groups = sessionGroupController.state.value.groups,
+                    records = historyController.state.value.records,
+                    onBack = { currentScreen.value = AppDestination.SessionGroups() },
+                )
                 is AppDestination.SignatureCatalog -> SignatureCatalogScreen(
                     userRules = signatureUserRules.value,
                     onCreateRule = { title, selector, category ->

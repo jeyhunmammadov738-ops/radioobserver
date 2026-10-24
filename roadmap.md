@@ -722,3 +722,29 @@ raw-address/BSSID reveal control.
 - "Observation-only" for BLE means no deliberate pairing, connection, injection, or active
   interrogation — not a guarantee that no radio packets are ever transmitted.
 - No device may be labeled a threat solely from a vendor signature.
+
+POST-ROADMAP WORKSTREAM 05 (2026-10-24, developer-approved): advanced observation
+session history, local analytics, timeline statistics and session comparison.
+Feasibility: existing HistoryRecords carry NO session identifier, so none was
+fabricated; groups are EXPLICIT user selections of ALREADY-SAVED record ids
+(legacy records stay ungrouped until selected; a group is an analytical selection,
+never a "verified scanning session"). New core: SessionGroups (named groups, cap
+50, name <= 40, app-generated "G-####" metadata ids, honest typed errors,
+syncWithRecords orphan cleanup, versioned ws05-groups-v1 codec, fail-closed on
+unsupported schema without rewriting the original) + SessionAnalytics (pure
+deterministic stats over saved records: BLE/Wi-Fi/source/signal/freshness/
+manufacturer distributions, saved vs observed provenance kept distinct, STALE
+cached Wi-Fi stays "Eski", invalid timestamps excluded and reported, 6
+deterministic time buckets, no interpolation, record counts are never device
+counts — structurally tested) + two-group comparison reusing the same engine.
+Storage: separate atomic app-private session_groups_v1.txt, constructed once in
+MainActivity.onCreate after super.onCreate (WS02 hotfix contract). UI: minimal
+functional Compose in the Geçmiş area (no fifth tab): group list/create/rename/
+delete (metadata-only deletion with confirmation), detail with stats + explicit
+membership add/remove + navigation to existing HistoryDetail, two-group comparison
+with honest notes; charts are deterministic Compose boxes only. +17 core tests
+(357/357 total), app 49/49, lint 0 errors/15 warnings (baseline kept).
+DEBUG APK only, versionCode NOT bumped. docs/workstream-05-session-analytics.md
+holds the full session-feasibility analysis, storage schema, honesty contract,
+test matrix and Xiaomi checklist. WS06 export/report and later workstreams NOT
+started.

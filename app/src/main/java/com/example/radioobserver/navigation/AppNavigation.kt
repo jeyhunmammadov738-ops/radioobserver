@@ -25,6 +25,16 @@ sealed interface AppDestination {
      * (no scan/permission/session effect) and it never reopens stale details.
      */
     data class SignatureCatalog(override val tab: AppTab = AppTab.SETTINGS) : AppDestination
+
+    /**
+     * WORKSTREAM 05: named analytical group screens, owned by the Geçmiş tab.
+     * PURE management destinations — opening any of them dispatches NOTHING
+     * (no scan/permission/session/recording action) and never saves live
+     * observations. Groups are analytical selections of ALREADY-SAVED records.
+     */
+    data class SessionGroups(override val tab: AppTab = AppTab.HISTORY) : AppDestination
+    data class SessionGroupDetail(val groupId: String, override val tab: AppTab = AppTab.HISTORY) : AppDestination
+    data class SessionGroupCompare(override val tab: AppTab = AppTab.HISTORY) : AppDestination
 }
 
 enum class AppTab { OBSERVATION, FEED, HISTORY, SETTINGS }
@@ -48,6 +58,10 @@ object AppNavigation {
         current is AppDestination.ObservationDetail -> AppDestination.TabScreen(AppTab.FEED)
         current is AppDestination.HistoryDetail -> AppDestination.TabScreen(AppTab.HISTORY)
         current is AppDestination.SignatureCatalog -> AppDestination.TabScreen(AppTab.SETTINGS)
+        // WORKSTREAM 05: group screens walk back within the Geçmiş area.
+        current is AppDestination.SessionGroups -> AppDestination.TabScreen(AppTab.HISTORY)
+        current is AppDestination.SessionGroupDetail -> AppDestination.SessionGroups()
+        current is AppDestination.SessionGroupCompare -> AppDestination.SessionGroups()
         current.tab == AppTab.OBSERVATION -> null
         else -> AppDestination.TabScreen(AppTab.OBSERVATION)
     }

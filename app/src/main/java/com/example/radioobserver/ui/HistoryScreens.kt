@@ -84,6 +84,8 @@ fun HistoryScreen(
     onDismissNotices: () -> Unit,
     onOpenDetail: (String) -> Unit,
     onOpenSettings: () -> Unit,
+    // WORKSTREAM 05: analytical groups entry (Geçmiş area; no fifth tab).
+    onOpenGroups: () -> Unit = {},
 ) {
     var clearAllConfirm by remember { mutableStateOf(false) }
     val historyClearAllA11y = stringResource(R.string.history_clear_all_a11y)
@@ -113,6 +115,12 @@ fun HistoryScreen(
                 color = MaterialTheme.colorScheme.primary,
             )
             HistoryFilterRow(filter, onFilterChange)
+            // WORKSTREAM 05: functional entry to named analytical groups
+            // (user-created selections of SAVED records; opens nothing that scans).
+            OutlinedButton(
+                onClick = onOpenGroups,
+                modifier = Modifier.heightIn(min = 48.dp),
+            ) { Text(stringResource(R.string.group_entry_button)) }
             // WORKSTREAM 04: favorites-only chip (no new navigation tab).
             FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 FilterChip(
