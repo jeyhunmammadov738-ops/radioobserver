@@ -31,6 +31,7 @@ import com.example.radioobserver.core.radio.ui.LiveViewKind
 import com.example.radioobserver.core.radio.ui.ObservationFeedProjection.FeedFilter
 import com.example.radioobserver.ui.ObservationDetailScreen
 import com.example.radioobserver.ui.ObservationsFeedScreen
+import com.example.radioobserver.ui.ReportExportScreen
 import com.example.radioobserver.core.radio.ui.FilterPresets
 import com.example.radioobserver.core.radio.ui.ObservationUiState
 import com.example.radioobserver.filters.FilterPresetFileStorage
@@ -534,6 +535,7 @@ class MainActivity : ComponentActivity() {
                             currentScreen.value = AppDestination.HistoryDetail(recordId)
                         },
                         onOpenSettings = { currentScreen.value = TabScreen(AppTab.SETTINGS) },
+                        onOpenReport = { currentScreen.value = AppDestination.ReportExport() },
                         // WORKSTREAM 05: analytical groups live INSIDE the Geçmiş
                         // area (no fifth tab). Opening dispatches NOTHING.
                         onOpenGroups = { currentScreen.value = AppDestination.SessionGroups() },
@@ -592,6 +594,9 @@ class MainActivity : ComponentActivity() {
                     onOpenHistoryDetail = { recordId ->
                         currentScreen.value = AppDestination.HistoryDetail(recordId)
                     },
+                    onOpenReport = {
+                        currentScreen.value = AppDestination.ReportExport(screen.groupId)
+                    },
                     onBack = { currentScreen.value = AppDestination.SessionGroups() },
                 )
                 is AppDestination.SessionGroupCompare -> SessionGroupCompareScreen(
@@ -620,6 +625,15 @@ class MainActivity : ComponentActivity() {
                         signatureUserRules.value = signatureUserRuleRepository.list()
                     },
                     onBack = { currentScreen.value = TabScreen(AppTab.SETTINGS) },
+                )
+                is AppDestination.ReportExport -> ReportExportScreen(
+                    groups = sessionGroupController.state.value.groups,
+                    records = historyController.state.value.records,
+                    annotations = historyController.state.value.annotations,
+                    preselectedGroupId = screen.groupId,
+                    onBack = {
+                        AppNavigation.onBack(screen)?.let { currentScreen.value = it }
+                    },
                 )
                 is AppDestination.ObservationDetail -> ObservationDetailScreen(
                     state = controlUiState.value,

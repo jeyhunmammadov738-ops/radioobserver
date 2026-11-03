@@ -243,6 +243,7 @@ fun SessionGroupDetailScreen(
     onAddRecord: (String, String) -> Unit,
     onRemoveRecord: (String, String) -> Unit,
     onOpenHistoryDetail: (String) -> Unit,
+    onOpenReport: () -> Unit,
     onBack: () -> Unit,
 ) {
     Surface(modifier = Modifier.fillMaxWidth()) {
@@ -277,6 +278,10 @@ fun SessionGroupDetailScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             val memberRecords = group.recordIds.mapNotNull { id -> records.firstOrNull { it.id == id } }
+            OutlinedButton(
+                onClick = onOpenReport,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            ) { Text(stringResource(R.string.report_open)) }
             GroupStatsCard(SessionAnalytics.stats(memberRecords))
             SectionHeader(stringResource(R.string.group_members))
             if (memberRecords.isEmpty()) {

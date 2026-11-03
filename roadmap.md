@@ -748,3 +748,26 @@ DEBUG APK only, versionCode NOT bumped. docs/workstream-05-session-analytics.md
 holds the full session-feasibility analysis, storage schema, honesty contract,
 test matrix and Xiaomi checklist. WS06 export/report and later workstreams NOT
 started.
+
+POST-ROADMAP WORKSTREAM 05 — DEVELOPER-REPORTED PHONE ACCEPTANCE (2026-11-03):
+the developer personally tested WS05 on Xiaomi and reported successful functional
+acceptance (groups, analytics, comparison). This is a developer report, NOT an
+OpenCode-run device test; WS05 host evidence remains the historical 357/357 core,
+49/49 app, lint 0/15 run of 2026-10-24.
+
+POST-ROADMAP WORKSTREAM 06 (2026-11-03, developer-approved): local reporting and
+explicit export. Scope: CSV/JSON exports of ALREADY-SAVED sanitized records via a
+named group, a two-group comparison, or all saved History behind an explicit
+confirmation; Android SAF (CreateDocument) only, text/csv + application/json, no
+storage permission, no share intent, no network. Privacy defaults: network names and
+user labels/notes EXCLUDED unless explicitly opted in; record ids, MAC/BSSID,
+payloads, fingerprints and FieldDiag data structurally unreachable. CSV: stable
+headers, RFC 4180 quoting, CRLF, ISO-8601 UTC, `unknown` token, apostrophe formula
+defense; JSON: schema_version 1, typed values, explicit nulls, honest notes. Group
+and comparison totals reuse the WS05 SessionAnalytics engine over surviving records;
+dangling group ids are reported as missing, never substituted. New core:
+core/radio/export/{ExportModels,ReportBuilder}. Host gates (2026-11-03): core
+370/370, app 49/49, lint 0 errors/15 warnings, DEBUG APK only, versionCode NOT
+bumped. docs/workstream-06-reporting-export.md holds schemas, trust table, SAF
+handling, tests and the Xiaomi checklist. Import/restore, PDF, WS07 and WS08 and the
+UI/UX redesign NOT started.

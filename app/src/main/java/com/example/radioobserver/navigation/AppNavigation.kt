@@ -35,6 +35,15 @@ sealed interface AppDestination {
     data class SessionGroups(override val tab: AppTab = AppTab.HISTORY) : AppDestination
     data class SessionGroupDetail(val groupId: String, override val tab: AppTab = AppTab.HISTORY) : AppDestination
     data class SessionGroupCompare(override val tab: AppTab = AppTab.HISTORY) : AppDestination
+
+    /**
+     * WORKSTREAM 06: explicit export screen (read-only projection of saved data).
+     * Opening it dispatches NOTHING and it never reopens stale details.
+     */
+    data class ReportExport(
+        val groupId: String? = null,
+        override val tab: AppTab = AppTab.HISTORY,
+    ) : AppDestination
 }
 
 enum class AppTab { OBSERVATION, FEED, HISTORY, SETTINGS }
@@ -62,6 +71,9 @@ object AppNavigation {
         current is AppDestination.SessionGroups -> AppDestination.TabScreen(AppTab.HISTORY)
         current is AppDestination.SessionGroupDetail -> AppDestination.SessionGroups()
         current is AppDestination.SessionGroupCompare -> AppDestination.SessionGroups()
+        current is AppDestination.ReportExport ->
+            if (current.groupId == null) AppDestination.TabScreen(AppTab.HISTORY)
+            else AppDestination.SessionGroupDetail(current.groupId)
         current.tab == AppTab.OBSERVATION -> null
         else -> AppDestination.TabScreen(AppTab.OBSERVATION)
     }

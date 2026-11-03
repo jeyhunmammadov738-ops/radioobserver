@@ -84,6 +84,8 @@ fun HistoryScreen(
     onDismissNotices: () -> Unit,
     onOpenDetail: (String) -> Unit,
     onOpenSettings: () -> Unit,
+    // WORKSTREAM 06: explicit export entry (reads saved data only).
+    onOpenReport: () -> Unit,
     // WORKSTREAM 05: analytical groups entry (Geçmiş area; no fifth tab).
     onOpenGroups: () -> Unit = {},
 ) {
@@ -115,6 +117,10 @@ fun HistoryScreen(
                 color = MaterialTheme.colorScheme.primary,
             )
             HistoryFilterRow(filter, onFilterChange)
+            OutlinedButton(
+                onClick = onOpenReport,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            ) { Text(stringResource(R.string.report_open)) }
             // WORKSTREAM 05: functional entry to named analytical groups
             // (user-created selections of SAVED records; opens nothing that scans).
             OutlinedButton(
