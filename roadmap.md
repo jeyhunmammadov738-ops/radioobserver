@@ -771,3 +771,19 @@ core/radio/export/{ExportModels,ReportBuilder}. Host gates (2026-11-03): core
 bumped. docs/workstream-06-reporting-export.md holds schemas, trust table, SAF
 handling, tests and the Xiaomi checklist. Import/restore, PDF, WS07 and WS08 and the
 UI/UX redesign NOT started.
+
+POST-ROADMAP WORKSTREAM 07 (2026-11-04, developer-approved, RESEARCH-ONLY): GPS,
+offline/online maps and broadcast drone Remote ID feasibility study.
+docs/workstream-07-advanced-feasibility.md records the verified capability matrix
+(BLE scan + passive Wi-Fi only; no INTERNET permission; location permission used
+ONLY as scan eligibility; no coordinates anywhere; no GPS/map/Remote ID code),
+official sources with access dates, separate tracks for handset location, maps and
+Remote ID, and a GO/CONDITIONAL/NO-GO decision matrix. Research-level acceptance
+ONLY: nothing was implemented, no Gradle/test/APK/device run occurred, and no new
+permission was requested. Headline outcome: handset-location card = GO conditional
+(smallest safe future slice, no persistence/export/map); schematic you-are-here =
+CONDITIONAL; offline tiles = NO-GO now (licensing/size); online maps = NO-GO in the
+current privacy model (needs INTERNET + ToS/billing); Remote ID = RESEARCH BLOCKED
+(paywalled ASTM F3411) and NO-GO now (transport coverage + third-party identity);
+direction/ranging/heatmaps/long-term tracking = NO-GO. WS06 remains CODE/HOST PASS
+with Xiaomi phone acceptance NOT independently documented; WS08 not started.
