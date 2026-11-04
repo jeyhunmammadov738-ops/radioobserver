@@ -1,0 +1,38 @@
+{
+  "project": "Radio Observer",
+  "repository": "radioobserver",
+  "license": "MIT",
+  "platform": "Android",
+  "language": "Kotlin",
+  "modules": {
+    ":core:radio": {
+      "kind": "pure-kotlin-jvm",
+      "androidImports": "none",
+      "responsibilities": [
+        "domain models (BLE advertisements, Wi-Fi access points)",
+        "BLE advertisement and conservative Wi-Fi parsers",
+        "RSSI signal buckets",
+        "observation pipeline and session coordinators",
+        "local History, annotations, analytical groups",
+        "analytics and CSV/JSON export builders"
+      ]
+    },
+    ":app": {
+      "kind": "android-application",
+      "ui": "Jetpack Compose (Material 3, dark-first)",
+      "responsibilities": [
+        "foreground observation session integration",
+        "sanitized presentation state",
+        "Storage Access Framework export",
+        "permission and lifecycle wiring"
+      ]
+    }
+  },
+  "principles": [
+    "local-first, receive-only observation",
+    "no uploads of BLE addresses, BSSIDs, SSIDs, locations or observation logs",
+    "record counts are never presented as distinct-device or tracking evidence",
+    "history recording is opt-in, separate Wi-Fi-name consent",
+    "host-only JVM tests verify parsing, state and analytics logic"
+  ]
+}
