@@ -841,3 +841,12 @@ ui/components with Control Deck tokens; app host tests rose 60 -> 74, core 370/3
 errors/15 warnings. Screen scaffolds, dense row integration into screens, filter/alert cards
 and dialog migration of existing call sites remain with UX-02/04/08. Xiaomi VISUAL
 acceptance of UX-01 is OPEN pending developer confirmation; UX-02 not started.
+
+UI/UX PACKAGE UX-02 (2026-11-06, developer-approved, IMPLEMENTED — DEBUG ONLY): global
+shell. docs/uiux/ux-02-shell.md records the single root Scaffold with edge-to-edge, the
+pure ShellPolicy chrome projection, the four-tab bottom bar (existing tabs/labels, 48dp
+targets, no fifth tab, no FieldDiag surface), primary-tab top bar using the existing
+Turkish titles, and secondary destinations keeping their own header so no bar is stacked.
+Removed duplicate in-content page titles in the four tab screens (shell now owns title
+presentation). Gates: core 370/370, app 81/81, lint 0 errors/15 warnings, DEBUG APK.
+UX-03..UX-09 remain NOT STARTED. Xiaomi visual/edge-to-edge acceptance OPEN.

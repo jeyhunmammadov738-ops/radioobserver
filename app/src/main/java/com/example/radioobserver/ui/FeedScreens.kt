@@ -145,13 +145,6 @@ fun ObservationsFeedScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.padding(horizontal = Spacing.lg)) {
                 Text(
-                    text = stringResource(R.string.feed_title),
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier
-                        .padding(top = Spacing.md)
-                        .semantics { heading() },
-                )
-                Text(
                     text = if (state.rows.isNotEmpty()) {
                         val count = ControlScreenProjection.observationCount(state.rows)
                         pluralStringResource(R.plurals.observation_count, count, count)

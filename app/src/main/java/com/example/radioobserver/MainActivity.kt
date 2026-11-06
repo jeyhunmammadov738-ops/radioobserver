@@ -3,6 +3,7 @@ package com.example.radioobserver
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,6 +33,9 @@ import com.example.radioobserver.core.radio.ui.ObservationFeedProjection.FeedFil
 import com.example.radioobserver.ui.ObservationDetailScreen
 import com.example.radioobserver.ui.ObservationsFeedScreen
 import com.example.radioobserver.ui.ReportExportScreen
+import com.example.radioobserver.ui.shell.DeckBottomBar
+import com.example.radioobserver.ui.shell.DeckTopBar
+import com.example.radioobserver.ui.shell.ShellPolicy
 import com.example.radioobserver.core.radio.ui.FilterPresets
 import com.example.radioobserver.core.radio.ui.ObservationUiState
 import com.example.radioobserver.filters.FilterPresetFileStorage
@@ -350,6 +354,9 @@ class MainActivity : ComponentActivity() {
         } catch (e: android.content.pm.PackageManager.NameNotFoundException) {
             ""
         }
+        // UX-02 (2026-11-06): edge-to-edge on the Control Deck background. The single
+        // root Scaffold owns the window insets; no screen adds its own system-bar inset.
+        enableEdgeToEdge()
         setContent {
             // Phase 3.5 (behavior preserved): actions leave ONLY through these
             // user-click callbacks into the 3.4 presenter; composition,
@@ -371,10 +378,19 @@ class MainActivity : ComponentActivity() {
             BackHandler(enabled = AppNavigation.handlesBack(destination)) {
                 AppNavigation.onBack(destination)?.let { currentScreen.value = it }
             }
+            // UX-02: one authoritative shell. Chrome is a PURE projection of the
+            // current destination (title/back/bars/insets owner); it never navigates,
+            // scans or writes anything on its own.
+            val chrome = ShellPolicy.chromeFor(destination)
             Scaffold(
+                topBar = {
+                    if (chrome.topBarVisible) {
+                        DeckTopBar(title = chrome.title)
+                    }
+                },
                 bottomBar = {
                     if (AppNavigation.showsBottomBar(destination)) {
-                        MainBottomBar(
+                        DeckBottomBar(
                             currentTab = AppNavigation.currentTab(destination),
                             onTabSelected = { tab ->
                                 currentScreen.value = AppNavigation.onTabSelected(destination, tab)
@@ -667,41 +683,6 @@ class MainActivity : ComponentActivity() {
     }
     }
 
-    /** Four-tab Material 3 bottom bar. PURE navigation: a tab tap only changes the
-     *  destination — it never starts/stops a session, requests a permission or
-     *  refreshes scanning state (JVM-tested in AppNavigationTest). */
-    @Composable
-    private fun MainBottomBar(
-        currentTab: AppTab,
-        onTabSelected: (AppTab) -> Unit,
-    ) {
-        NavigationBar {
-            NavigationBarItem(
-                selected = currentTab == AppTab.OBSERVATION,
-                onClick = { onTabSelected(AppTab.OBSERVATION) },
-                icon = { Icon(Icons.Filled.Home, contentDescription = null) },
-                label = { Text(stringResource(R.string.tab_observation)) },
-            )
-            NavigationBarItem(
-                selected = currentTab == AppTab.FEED,
-                onClick = { onTabSelected(AppTab.FEED) },
-                icon = { Icon(Icons.Filled.List, contentDescription = null) },
-                label = { Text(stringResource(R.string.tab_feed)) },
-            )
-            NavigationBarItem(
-                selected = currentTab == AppTab.HISTORY,
-                onClick = { onTabSelected(AppTab.HISTORY) },
-                icon = { Icon(Icons.Filled.DateRange, contentDescription = null) },
-                label = { Text(stringResource(R.string.tab_history)) },
-            )
-            NavigationBarItem(
-                selected = currentTab == AppTab.SETTINGS,
-                onClick = { onTabSelected(AppTab.SETTINGS) },
-                icon = { Icon(Icons.Filled.Settings, contentDescription = null) },
-                label = { Text(stringResource(R.string.tab_settings)) },
-            )
-        }
-    }
 }
 
 

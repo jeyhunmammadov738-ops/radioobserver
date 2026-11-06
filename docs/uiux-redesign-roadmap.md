@@ -299,3 +299,7 @@ docs/
 - **2026-11-06 — UX-01 tamamlandı (kod/host).** Tasarım sistemi temeli + eksik üç bileşen
   (CompactObservationRow, ConfirmActionDialog, StateSurface) ve EmphasisButton eklendi.
   Ayrıntı: `docs/uiux/ux-01-design-system.md` §9. Xiaomi görsel kabulü AÇIK; UX-02 başlamadı.
+
+- **2026-11-06 — UX-02 TAMAMLANDI (kod/host, DEBUG).** Global kabuk: tek kök Scaffold,
+  edge-to-edge, dört sekme, birincil sekmelerde kabuk üst çubuğu, ikincil hedeflerde
+  kendi başlıkları. `docs/uiux/ux-02-shell.md`. UX-03+ BAŞLATILMADI; Xiaomi görsel kabul AÇIK.

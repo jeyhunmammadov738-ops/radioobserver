@@ -81,12 +81,6 @@ fun SettingsScreen(
             .padding(Spacing.lg),
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
-        Text(
-            text = stringResource(R.string.settings_title),
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.semantics { heading() },
-        )
-
         // ---- Geçmiş kaydı: toggle + short summary; full consent one tap away ----
         SettingsGroup(R.string.settings_history_section) {
             ToggleRow(

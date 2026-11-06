@@ -99,12 +99,6 @@ fun HistoryScreen(
                 .padding(Spacing.lg),
             verticalArrangement = Arrangement.spacedBy(Spacing.sm),
         ) {
-            Text(
-                text = stringResource(R.string.history_title),
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.semantics { heading() },
-            )
-
             if (state.failedClosedNotice) {
                 HistoryNoticeCard(stringResource(R.string.history_failed_closed_notice), onDismissNotices)
             } else if (state.droppedNotice) {
