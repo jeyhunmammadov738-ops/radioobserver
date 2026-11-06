@@ -857,3 +857,9 @@ session), alert triggers behind a collapsed disclosure, control blocks untouched
 (single contextual Start/Stop already conditional). Behavioural contracts preserved;
 gates: core 370/370, app 81/81, lint 0/15, DEBUG APK. Xiaomi visual acceptance OPEN.
 UX-04..UX-09 not started.
+
+UX-04 (2026-11-06, developer-approved): live observations presentation pass — view modes,
+source filters, advanced-filter button, favorites chip and label grouped into one compact
+toolbar surface; stale rows use the dedicated STALE pill tone. No behaviour, state,
+filter or preset change. Host gates: core 370/370, app 81/81, lint 0/15, DEBUG APK only.
+Xiaomi visual acceptance OPEN.

@@ -177,8 +177,16 @@ fun ObservationsFeedScreen(
                 }
             }
             // WORKSTREAM 01 view switcher: Liste / Radar / Zaman tüneli. Same
-            // 48dp-target FilterChip pattern as the source filters; pure UI state.
-            Column(modifier = Modifier.padding(horizontal = Spacing.lg)) {
+            // UX-04: compact toolbar surface groups view modes and source filters so the
+            // feed header does not stack full-width blocks. 48dp targets preserved.
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Spacing.lg),
+            ) {
+            Column(modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs)) {
                 Text(
                     text = stringResource(R.string.view_label),
                     style = MaterialTheme.typography.labelMedium,
@@ -213,7 +221,7 @@ fun ObservationsFeedScreen(
             FlowRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = Spacing.lg, vertical = Spacing.xs),
+                    .padding(vertical = Spacing.xs),
                 horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
             ) {
                 FilterChip(
@@ -253,6 +261,7 @@ fun ObservationsFeedScreen(
                     label = { Text(stringResource(R.string.live_favorites_only)) },
                     modifier = Modifier.heightIn(min = 48.dp),
                 )
+            }
             }
             if (filterPanelOpen) {
                 FilterPanel(
@@ -429,7 +438,7 @@ private fun ObservationRow(
 private fun freshnessPill(freshness: FreshnessState): com.example.radioobserver.ui.components.PillKind =
     when (freshness) {
         FreshnessState.FRESH -> com.example.radioobserver.ui.components.PillKind.ACTIVE
-        FreshnessState.STALE -> com.example.radioobserver.ui.components.PillKind.ATTENTION
+        FreshnessState.STALE -> com.example.radioobserver.ui.components.PillKind.STALE
         FreshnessState.UNKNOWN -> com.example.radioobserver.ui.components.PillKind.NEUTRAL
     }
 

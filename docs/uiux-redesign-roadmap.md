@@ -307,3 +307,7 @@ docs/
 - **2026-11-06 — UX-03 TAMAMLANDI (kod/host).** Kompakt durum başlığı ve katlanır
   tetikleyici paneli: `docs/uiux/ux-03-dashboard.md`. Xiaomi görsel kabulü AÇIK.
   UX-04 ve sonrası BAŞLATILMADI.
+
+- **2026-11-06 — UX-03 TAMAMLANDI** (kompakt panel + katlanır tetikleyiciler) · **UX-04
+  TAMAMLANDI** (kompakt gözlem araç çubuğu, STALE tonu): `docs/uiux/ux-03-dashboard.md`,
+  `docs/uiux/ux-04-live-observations.md`. Xiaomi görsel kabulü AÇIK. UX-05+ BAŞLATILMADI.
