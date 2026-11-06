@@ -796,3 +796,17 @@ no source change was made and the final tree is identical to WS06 (same APK SHA-
 docs/workstream-08-integration-qa.md holds the dependency graph, the acceptance matrix and the
 device checklist. Status: WS08 code/host QA PASS; WS06 SAF/export phone acceptance OPEN; WS08
 Xiaomi acceptance OPEN; WS07 implementation NOT authorized; UI/UX redesign NOT started.
+
+SEPARATE UI/UX REDESIGN ROADMAP (2026-11-06, developer-approved, INSTALLED AS A PLAN
+ONLY — NO UX PACKAGE STARTED): the professional visual redesign is tracked in its own
+document, docs/uiux-redesign-roadmap.md (UIUX-RM v1.0: UX-00 baseline/screen inventory
+and design contract, UX-01 theme/components, UX-02 shell, UX-03 observation panel,
+UX-04 feed/radar/timeline/filters, UX-05 History, UX-06 analytics, UX-07 reporting,
+UX-08 settings/alerts/catalog, UX-09 final integrated QA). This is a SEPARATE track, not an
+additional numbered phase: the
+Phase 1-3 tasks above, their order (2.6 before 2.5), checkboxes and evidence remain the
+immutable historical record. UX-00 is documentation/design work (Build Mode OFF);
+UX-01 onward are DEBUG-only code packages that each require explicit authorization and
+must keep the zero-functional-regression contract in the design roadmap (§F). No UX
+package, no theme change, no component refactor and no visual redesign has been
+implemented; WS06/WS08 Xiaomi acceptance stays OPEN.
