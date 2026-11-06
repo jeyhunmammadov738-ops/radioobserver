@@ -787,3 +787,12 @@ current privacy model (needs INTERNET + ToS/billing); Remote ID = RESEARCH BLOCK
 (paywalled ASTM F3411) and NO-GO now (transport coverage + third-party identity);
 direction/ranging/heatmaps/long-term tracking = NO-GO. WS06 remains CODE/HOST PASS
 with Xiaomi phone acceptance NOT independently documented; WS08 not started.
+
+POST-ROADMAP WORKSTREAM 08 (2026-11-06, developer-approved): cross-workstream integration QA,
+privacy/data-integrity regression and final DEBUG verification. Read-only Git audit established
+linear ancestry bf61647 -> 067a200 -> fe2ec74 -> HEAD with no lost work; no defects were found, so
+no source change was made and the final tree is identical to WS06 (same APK SHA-256). Fresh final
+-tree gates: core 370/370, app 49/49, compileDebugKotlin, assembleDebug, lint 0 errors/15 warnings.
+docs/workstream-08-integration-qa.md holds the dependency graph, the acceptance matrix and the
+device checklist. Status: WS08 code/host QA PASS; WS06 SAF/export phone acceptance OPEN; WS08
+Xiaomi acceptance OPEN; WS07 implementation NOT authorized; UI/UX redesign NOT started.
