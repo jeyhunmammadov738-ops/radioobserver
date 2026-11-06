@@ -296,3 +296,6 @@ docs/
   lint 0 hata/15 uyarı. Ekran düzeni, gezinme, kabuk ve sistem çubuğu UX-02'ye bırakıldı;
   UX-02 ve sonrası BAŞLATILMADI.
 
+- **2026-11-06 — UX-01 tamamlandı (kod/host).** Tasarım sistemi temeli + eksik üç bileşen
+  (CompactObservationRow, ConfirmActionDialog, StateSurface) ve EmphasisButton eklendi.
+  Ayrıntı: `docs/uiux/ux-01-design-system.md` §9. Xiaomi görsel kabulü AÇIK; UX-02 başlamadı.

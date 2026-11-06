@@ -44,3 +44,13 @@ screen file.
 Every new shared component carries: one preview, one semantics contract, no business logic, no
 string literals (resource keys only), and must not own state beyond visual toggles. Screen files
 keep calling the existing callbacks; UX work changes appearance and composition only.
+
+## Update — 2026-11-06 (UX-01 completion)
+
+| Target | Status | Source |
+|---|---|---|
+| `CompactObservationRow` | IMPLEMENTED (deferred item closed) | `ui/components/DesignSystem.kt`, model in `PresentationModel.kt` |
+| `ConfirmActionDialog` | IMPLEMENTED | `DesignSystem.kt` + `Confirmation` in `PresentationModel.kt` |
+| Empty/error standard | IMPLEMENTED as `StateSurface` (EMPTY/NO_SESSION/PERMISSION/UNAVAILABLE/ERROR/LOADING); `EmptyState` retained for existing callers | `DesignSystem.kt` + `StateSurfaces` |
+| `EmphasisButton` | IMPLEMENTED (primary/secondary/text/destructive) | `DesignSystem.kt` |
+| `ScreenScaffold`, `FilterSheet`, `AlertConfigPanel`, `SavedRecordRow` | STILL DEFERRED to UX-02/04/08 | — |

@@ -187,6 +187,17 @@
     <string name="group_member_open_detail">Ayrıntılar</string>
     <string name="group_record_label_format">%1$s · %2$s</string>
     <string name="group_date_format">yyyy-MM-dd HH:mm</string>
+
+    <!-- UX-01 shared design-system strings -->
+    <string name="ux_freshness_fresh">Taze</string>
+    <string name="ux_freshness_stale">Eski</string>
+    <string name="ux_freshness_unknown">Bilinmiyor</string>
+    <string name="ux_state_empty_title">Kayıt yok</string>
+    <string name="ux_state_no_session_title">Oturum yok</string>
+    <string name="ux_state_permission_title">İzin gerekli</string>
+    <string name="ux_state_unavailable_title">Kullanılamıyor</string>
+    <string name="ux_state_error_title">Sorun oluştu</string>
+    <string name="ux_state_loading_title">Yükleniyor</string>
         <string name="alerts_title">Oturum uyarıları</string>
     <string name="alerts_enable">Uyarıları etkinleştir</string>
     <string name="alerts_enable_a11y">Oturum uyarılarını etkinleştir veya devre dışı bırak</string>

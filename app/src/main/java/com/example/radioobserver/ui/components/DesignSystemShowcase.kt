@@ -81,3 +81,55 @@ fun DesignSystemShowcase() {
         }
     }
 }
+
+/**
+ * Preview definitions for the UX-01 completion components. Synthetic Turkish labels only;
+ * no device data, no scanning. Rendered only in a preview host (source-level definitions).
+ */
+@Composable
+fun CompactRowPreviewSample() {
+    val fresh = ObservationRowMapping.model(
+        isBluetooth = true, primaryText = "BLE-4C21", metadata = "Apple · bilinen üretici",
+        isFresh = true, isCached = false, ageKnown = true, favorite = true, enabled = true,
+    )
+    val stale = ObservationRowMapping.model(
+        isBluetooth = false, primaryText = null, metadata = "Önbellek sonucu",
+        isFresh = true, isCached = true, ageKnown = true, favorite = false, enabled = false,
+    )
+    RadioObserverTheme {
+        Surface {
+            Column {
+                CompactObservationRow(model = fresh, unknownLabel = "Ad bilinmiyor", onOpen = {}, onToggleFavorite = {})
+                CompactObservationRow(model = stale, unknownLabel = "Ad bilinmiyor", onOpen = {})
+            }
+        }
+    }
+}
+
+@Composable
+fun StateSurfacePreviewSample() {
+    RadioObserverTheme {
+        Surface {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                StateSurface(model = StateSurfaces.empty("Bu görünümde kayıt yok."))
+                StateSurface(model = StateSurfaces.permissionRequired("Tarama için izin gerekli.", "İzin ver"))
+                StateSurface(model = StateSurfaces.error("Okuma başarısız.", "Tekrar dene"))
+                StateSurface(model = StateSurfaces.loading())
+            }
+        }
+    }
+}
+
+@Composable
+fun ConfirmDialogPreviewSample() {
+    RadioObserverTheme {
+        ConfirmActionDialog(
+            title = "Kaydı sil",
+            explanation = "Bu kayıt kalıcı olarak silinecek. Geri alınamaz.",
+            confirmLabel = "Sil",
+            cancelLabel = "Vazgeç",
+            onConfirm = {}, onCancel = {}, onDismissRequest = {},
+            destructive = true,
+        )
+    }
+}

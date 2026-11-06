@@ -15,6 +15,20 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -370,5 +384,198 @@ fun ActionRow(
         horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
         content = content,
+    )
+}
+
+/**
+ * UX-01 action hierarchy: PRIMARY filled, SECONDARY tonal, TEXT quiet, DESTRUCTIVE error
+ * filled with an errored label. Only an explicit tap fires [onClick].
+ */
+@Composable
+fun EmphasisButton(
+    label: String,
+    emphasis: Emphasis,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    when (emphasis) {
+        Emphasis.PRIMARY -> Button(onClick = onClick, enabled = enabled, modifier = modifier) { Text(label) }
+        Emphasis.SECONDARY -> FilledTonalButton(onClick = onClick, enabled = enabled, modifier = modifier) { Text(label) }
+        Emphasis.TEXT -> TextButton(onClick = onClick, enabled = enabled, modifier = modifier) { Text(label) }
+        Emphasis.DESTRUCTIVE -> Button(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = modifier,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+            ),
+        ) { Text(label) }
+    }
+}
+
+/**
+ * UX-01 compact observation row: the shared presentation foundation for live and saved
+ * rows. It renders exactly the supplied sanitized model and owns NO state, NO persistence
+ * and NO identity assumption — no BLE address/BSSID field exists in the API at all.
+ */
+@Composable
+fun CompactObservationRow(
+    model: ObservationRowModel,
+    unknownLabel: String,
+    onOpen: (() -> Unit)? = null,
+    onToggleFavorite: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    val colors = MaterialTheme.colorScheme
+    val primary = model.primaryText ?: unknownLabel
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = Dimensions.touchTarget)
+            .alpha(if (model.enabled) 1f else 0.55f)
+            .then(
+                if (model.enabled && onOpen != null) {
+                    Modifier
+                        .clip(MaterialTheme.shapes.small)
+                        .clickable(onClick = onOpen)
+                        .semantics { role = Role.Button }
+                } else {
+                    Modifier
+                }
+            )
+            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+    ) {
+        RadioSourceBadge(radio = if (model.source == SourceTag.BLUETOOTH) RadioType.BLE else RadioType.WIFI)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = primary,
+                style = MaterialTheme.typography.titleMedium,
+                color = if (model.primaryKind == PrimaryTextKind.KNOWN) colors.onSurface else colors.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            model.metadata?.let { meta ->
+                Text(
+                    text = meta,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        CompactFreshnessTag(model.freshness)
+        if (onToggleFavorite != null) {
+            IconButton(
+                onClick = { if (model.enabled) onToggleFavorite() },
+                enabled = model.enabled,
+                modifier = Modifier.size(Dimensions.touchTarget),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Star,
+                    contentDescription = null,
+                    tint = if (model.favorite) colors.secondary else colors.outline,
+                )
+            }
+        }
+    }
+}
+
+/** Freshness tag on a compact row. The WORD carries the meaning, never colour alone. */
+@Composable
+private fun CompactFreshnessTag(tag: FreshnessTag) {
+    val text = when (tag) {
+        FreshnessTag.FRESH -> stringResource(R.string.ux_freshness_fresh)
+        FreshnessTag.STALE -> stringResource(R.string.ux_freshness_stale)
+        FreshnessTag.UNKNOWN -> stringResource(R.string.ux_freshness_unknown)
+    }
+    StatusPill(text = text, kind = if (tag == FreshnessTag.FRESH) PillKind.ACTIVE else PillKind.STALE)
+}
+
+/**
+ * UX-01 standardized state surface: empty, no-session, permission, unavailable, error
+ * (optional retry) and loading. Presentation only — it never scans, writes History or asks
+ * for a permission; any action is forwarded to the caller.
+ */
+@Composable
+fun StateSurface(
+    model: StateSurfaceModel,
+    modifier: Modifier = Modifier,
+    onAction: (() -> Unit)? = null,
+    onDismiss: (() -> Unit)? = null,
+) {
+    val colors = MaterialTheme.colorScheme
+    val container = when (model.kind) {
+        SurfaceKind.ERROR -> colors.errorContainer
+        SurfaceKind.PERMISSION_REQUIRED -> colors.primaryContainer
+        else -> colors.surfaceVariant
+    }
+    val content = when (model.kind) {
+        SurfaceKind.ERROR -> colors.onErrorContainer
+        SurfaceKind.PERMISSION_REQUIRED -> colors.onPrimaryContainer
+        else -> colors.onSurfaceVariant
+    }
+    Surface(color = container, contentColor = content, shape = MaterialTheme.shapes.medium, modifier = modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.md),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+        ) {
+            Text(
+                text = when (model.kind) {
+                    SurfaceKind.EMPTY -> stringResource(R.string.ux_state_empty_title)
+                    SurfaceKind.NO_SESSION -> stringResource(R.string.ux_state_no_session_title)
+                    SurfaceKind.PERMISSION_REQUIRED -> stringResource(R.string.ux_state_permission_title)
+                    SurfaceKind.UNAVAILABLE -> stringResource(R.string.ux_state_unavailable_title)
+                    SurfaceKind.ERROR -> stringResource(R.string.ux_state_error_title)
+                    SurfaceKind.LOADING -> stringResource(R.string.ux_state_loading_title)
+                },
+                style = MaterialTheme.typography.titleSmall,
+            )
+            model.detailText?.let {
+                Text(text = it, style = MaterialTheme.typography.bodySmall)
+            }
+            model.actionLabel?.let { label ->
+                if (onAction != null) {
+                    EmphasisButton(label = label, emphasis = model.actionEmphasis, onClick = onAction)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * UX-01 shared confirmation dialog. It only forwards the user's explicit choice: it never
+ * confirms by itself, never performs the destructive work and never dismisses with a
+ * confirmation. Existing delete/clear semantics are preserved by the callers.
+ */
+@Composable
+fun ConfirmActionDialog(
+    title: String,
+    explanation: String,
+    confirmLabel: String,
+    cancelLabel: String,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+    onDismissRequest: () -> Unit,
+    destructive: Boolean = false,
+) {
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = { Text(text = title, style = MaterialTheme.typography.titleMedium) },
+        text = { Text(text = explanation, style = MaterialTheme.typography.bodyMedium) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(
+                    text = confirmLabel,
+                    color = if (destructive) MaterialTheme.colorScheme.error
+                    else MaterialTheme.colorScheme.primary,
+                )
+            }
+        },
+        dismissButton = { TextButton(onClick = onCancel) { Text(cancelLabel) } },
     )
 }

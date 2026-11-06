@@ -82,3 +82,10 @@ must not regress basic semantics, but no pass is claimed.
 No change to scanning/permission/lifecycle/consent/retention logic; no fifth tab; no new
 permissions; SanitizedOnly UI data; radar stays schematic with its honesty label; destructive
 flows keep confirmation; FieldDiag gate rules unchanged; all existing JVM tests must stay green.
+
+## 10. Implemented in UX-01 completion (2026-11-06)
+Action hierarchy is realised by `EmphasisButton` (filled / tonal / text / error-container), the
+standard non-content surface by `StateSurface` (empty, no-session, permission, unavailable,
+error+retry, loading) and confirmation by `ConfirmActionDialog` with a pure
+confirm/cancel/dismiss contract. All values come from `ControlDeckTokens`, `Spacing` and
+`Dimensions`; no second palette or spacing scale exists.

@@ -124,3 +124,49 @@ export, alerts, FieldDiag hidden + 7 taps); system dark mode both directions.
 Light scheme untouched; dynamic colour absent by design; no screenshot evidence;
 CompactObservationRow/ScreenScaffold/other catalog items deliberately deferred; no new
 dependency added.
+
+## 9. UX-01 completion reconciliation (2026-11-06, targeted iteration)
+
+### 9.1 Requirement audit A–L
+
+| # | Requirement | Implementation | Source | Reusable/parameterised | Preview | Host-testable |
+|---|---|---|---|---|---|---|
+| A | Central color/typography/shapes/spacing | `ControlDeckTokens` + full dark scheme + tuned `Typography` + `Shapes` + `Spacing`/`Dimensions` | `ui/theme/DesignTokens.kt`, `ui/theme/Theme.kt`, `ui/components/DesignSystem.kt` | yes | showcase | contrast + token tests |
+| B | Radio source badge | `RadioSourceBadge` | DesignSystem.kt | yes (`radio`, size) | yes | mapping (SourceTag) |
+| C | Statistic row | `StatisticRow`, `StatBlock` | DesignSystem.kt | yes | yes | numeric style |
+| D | Section header | `SectionHeader(text, description, trailing)` | DesignSystem.kt | yes | yes | n/a |
+| E | State banner | `StatusBanner` (+ `StatusPill`, `PillKind` incl. WARNING/STALE) | DesignSystem.kt | yes | yes | kind mapping |
+| F | Action row | `ActionRow(RowScope)` + `EmphasisButton` | DesignSystem.kt | yes | yes | emphasis mapping |
+| G | Compact observation row | **NEW** `CompactObservationRow(model, unknownLabel, onOpen, onToggleFavorite)` over pure `ObservationRowModel` | DesignSystem.kt + `PresentationModel.kt` | yes | yes | 14 tests |
+| H | Confirmation dialog | **NEW** `ConfirmActionDialog` + pure `Confirmation` contract | DesignSystem.kt + `PresentationModel.kt` | yes | yes | confirm/cancel/dismiss tests |
+| I | Empty/error states | **NEW** `StateSurface` over `StateSurfaces` (EMPTY/NO_SESSION/PERMISSION_REQUIRED/UNAVAILABLE/ERROR/LOADING); legacy `EmptyState` kept | DesignSystem.kt + `PresentationModel.kt` | yes | yes | kind/retry tests |
+| J | Primary/secondary/text/destructive | `EmphasisButton` (filled / tonal / text / error-container) | DesignSystem.kt | yes | yes | emphasis mapping |
+| K | Selected/disabled/permission/error/loading | `selected` on rows, `enabled` forwarding, `alpha` on disabled, surface kinds | DesignSystem.kt | yes | yes | pure mapping |
+| L | Icon sizes, touch areas, contrast | `Dimensions.icon=20dp`, `touchTarget=48dp`, contrast matrix (§7) | DesignSystem.kt, DesignTokens.kt | n/a | n/a | contrast tests |
+
+### 9.2 Previously existing vs newly implemented
+Existing before this iteration: A, B, C, D, E, F, J (partial), L. Newly implemented: **G, H, I**,
+plus `EmphasisButton` completing J and `StateSurface` covering K's presentation states.
+No component was duplicated: `EmptyState` remains for existing callers, `StateSurface` is the
+newer standard for empty/error/permission/loading; both use the same tokens.
+
+### 9.3 Purity, no identity
+`ObservationRowModel` exposes only source, sanitized text, metadata, freshness tag, favorite
+and enabled — there is no address/BSSID/location field (structurally asserted by a test).
+`StateSurface` and `CompactObservationRow` never scan, never write History, never request
+permission; every action is a caller callback (`onOpen`, `onToggleFavorite`, `onAction`).
+
+### 9.4 Regression coverage
+`app/src/test/.../ui/components/PresentationModelTest.kt` (14 tests): source distinction,
+fresh/stale/cached/unknown, blank/null text, no-identity field scan, disabled targets,
+confirm/cancel/dismiss contract, destructive explanation rule, surface kinds, retry presence,
+emphasis mapping, purity/repeatability. Compose composition, click, focus and dialog rendering
+remain **NOT VERIFIED** under host infrastructure and are documented as device-only.
+
+### 9.5 Deliberate deferrals
+`ScreenScaffold`/system-bar ownership (UX-02), dense feed row integration into live screens
+(UX-04), alert/filter cards (UX-03/04/08), dialog migration of existing delete/clear call
+sites (kept as-is; `ConfirmActionDialog` is available for the owning packages).
+
+### 9.6 Status
+UX-01 CODE/HOST COMPLETE. Xiaomi visual acceptance **OPEN** (developer). UX-02 not started.

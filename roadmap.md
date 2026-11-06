@@ -831,3 +831,13 @@ sites rewritten, zero navigation/shell/screen-layout change, zero functional con
 change. Gates: core 370/370, app 60/60 (11 new design-system tests), compile, assemble,
 lint 0 errors/15 warnings (baseline parity). Fields verified. UX-02 onward NOT started.
 
+
+UX-01 DESIGN SYSTEM — CODE/HOST COMPLETE (2026-11-06): the targeted completion iteration
+closed the three deferred items. CompactObservationRow (pure ObservationRowModel, no
+identity field), ConfirmActionDialog (pure confirm/cancel/dismiss contract) and the
+standardized StateSurface (empty, no-session, permission-required, unavailable, error with
+optional retry, loading) plus EmphasisButton (primary/secondary/text/destructive) now live in
+ui/components with Control Deck tokens; app host tests rose 60 -> 74, core 370/370, lint 0
+errors/15 warnings. Screen scaffolds, dense row integration into screens, filter/alert cards
+and dialog migration of existing call sites remain with UX-02/04/08. Xiaomi VISUAL
+acceptance of UX-01 is OPEN pending developer confirmation; UX-02 not started.
