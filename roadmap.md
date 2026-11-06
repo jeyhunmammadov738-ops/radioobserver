@@ -810,3 +810,13 @@ UX-01 onward are DEBUG-only code packages that each require explicit authorizati
 must keep the zero-functional-regression contract in the design roadmap (§F). No UX
 package, no theme change, no component refactor and no visual redesign has been
 implemented; WS06/WS08 Xiaomi acceptance stays OPEN.
+
+DEVELOPER-REPORTED REAL-DEVICE ACCEPTANCE CLARIFICATION (2026-11-06): the developer has
+reported that the functional application passed Xiaomi phone testing, explicitly including
+the WS06 CSV/JSON export (SAF) flow and the WS08 integrated gate. This is a
+DEVELOPER-REPORTED acceptance (not an OpenCode-executed device run). It supersedes the
+"Xiaomi acceptance OPEN" wording in the WS06/WS08 notes above; those entries are left
+historically unchanged and no host/JVM evidence level is upgraded by this note. UX-00
+(Screen inventory, journeys, component catalog, design contract, state matrix) is COMPLETE
+as documentation only — see docs/uiux/*.md; UX-01 onward remain NOT STARTED and each
+requires separate authorization.

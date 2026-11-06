@@ -279,3 +279,13 @@ docs/
 - WCAG 2.2 minimum text contrast — https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum
 
 **Sınırlılık:** Bu tasarım yol haritası yedi gönderilen ekran görüntüsüne, önceki OpenCode işlevsel raporlarına ve kamuya açık Android tasarım yönergelerine dayanır; gerçek kaynak depo bu sohbetten açılıp düzenlenmemiştir. UX-00 bu nedenle ekran envanterinin koddan teyit edilmesiyle başlar. Bu dosyanın oluşturulması Android uygulamasında, Git'te veya proje kökü `roadmap.md` üzerinde hiçbir değişiklik yapmamıştır.
+
+---
+
+## Durum günlüğü
+
+- **2026-11-06 — UX-00 TAMAMLANDI (doküman).** Ekran envanteri, kullanıcı yolculukları,
+  bileşen kataloğu, tasarım sözleşmesi ve ekran-durum matrisi üretildi:
+  `docs/uiux/screen-inventory.md`, `design-contract.md`, `component-catalog.md`,
+  `screen-state-matrix.md`, `ux-00-acceptance.md`. Kaynak kodda değişiklik yok; Build Mode OFF.
+  UX-01 ve sonrası BAŞLATILMADI.
