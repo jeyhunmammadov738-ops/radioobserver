@@ -175,39 +175,53 @@ fun RadioObserverControlScreen(
  */
 @Composable
 private fun SummaryStrip(state: ObservationUiState) {
+    // UX-03: compact session status header — REAL status pills for each supported
+    // source (text + tone, never colour alone) and the live record count. No padding
+    // gymnastics, no nested card, no fabricated combined-session state.
     val active = DashboardSummary.activeSourceCount(
         state.bleSession.status, state.wifiSession.status)
     Surface(
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.small,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        if (DashboardSummary.anyActive(state.bleSession.status, state.wifiSession.status)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+        ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = Spacing.md, vertical = Spacing.sm),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = stringResource(R.string.summary_active_sources, active),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
+                StatusPill(
+                    text = stringResource(R.string.source_ble) + " · " +
+                        statusLabel(state.bleSession.status),
+                    kind = PillStyle.kindFor(state.bleSession.status),
                 )
-                Text(
-                    text = stringResource(
-                        R.string.summary_live_records,
-                        ControlScreenProjection.observationCount(state.rows)),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
+                StatusPill(
+                    text = stringResource(R.string.source_wifi) + " · " +
+                        statusLabel(state.wifiSession.status),
+                    kind = PillStyle.kindFor(state.wifiSession.status),
                 )
             }
-        } else {
             Text(
-                text = stringResource(R.string.summary_none_active),
-                style = MaterialTheme.typography.bodyMedium,
+                text = if (DashboardSummary.anyActive(
+                        state.bleSession.status, state.wifiSession.status)) {
+                    stringResource(
+                        R.string.summary_active_sources,
+                        active,
+                    ) + " · " + stringResource(
+                        R.string.summary_live_records,
+                        ControlScreenProjection.observationCount(state.rows),
+                    )
+                } else {
+                    stringResource(R.string.summary_none_active)
+                },
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
             )
         }
     }
@@ -511,18 +525,31 @@ private fun SessionAlertsPanel(
                 )
             }
             if (alerts.enabled) {
-                Text(
-                    text = stringResource(R.string.alerts_triggers),
-                    style = MaterialTheme.typography.labelMedium,
-                )
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                    AlertTrigger.entries.forEach { trigger ->
-                        FilterChip(
-                            selected = trigger in alerts.triggers,
-                            onClick = { onAlertTriggerToggled(trigger) },
-                            label = { Text(alertTriggerLabel(trigger)) },
-                            modifier = Modifier.heightIn(min = 48.dp),
-                        )
+                // UX-03: the seven trigger chips live behind a disclosure so the
+                // dashboard never becomes one enormous vertical stack. Collapsed by
+                // default; the current selection count stays visible when collapsed.
+                var triggersOpen by remember { mutableStateOf(false) }
+                TextButton(
+                    onClick = { triggersOpen = !triggersOpen },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Text(
+                        text = stringResource(
+                            R.string.alerts_triggers_toggle_format,
+                            alerts.triggers.size,
+                        ),
+                    )
+                }
+                if (triggersOpen) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                        AlertTrigger.entries.forEach { trigger ->
+                            FilterChip(
+                                selected = trigger in alerts.triggers,
+                                onClick = { onAlertTriggerToggled(trigger) },
+                                label = { Text(alertTriggerLabel(trigger)) },
+                                modifier = Modifier.heightIn(min = 48.dp),
+                            )
+                        }
                     }
                 }
                 if (alerts.alerts.isEmpty()) {

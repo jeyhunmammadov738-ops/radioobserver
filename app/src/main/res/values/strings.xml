@@ -206,7 +206,7 @@
     <string name="alerts_enable_a11y">Oturum uyarılarını etkinleştir veya devre dışı bırak</string>
     <string name="alerts_explanation">Uyarılar yalnızca uygulama ön plandayken ve gözlem oturumu etkin olduğunda çalışır.</string>
     <string name="alerts_privacy_note">Uyarılar cihaz kimliği içermez; oturum bitince silinir ve hiçbir yerde saklanmaz.</string>
-    <string name="alerts_triggers">Tetikleyiciler</string>
+    <string name="alerts_triggers_toggle_format">Tetikleyiciler: seçili %1$d</string>
     <string name="alerts_no_session">Etkin oturum yok; uyarılar bekletilir.</string>
     <string name="alerts_empty">Henüz uyarı yok.</string>
     <string name="alert_dismiss">Kapat</string>

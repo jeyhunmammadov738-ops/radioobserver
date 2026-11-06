@@ -850,3 +850,10 @@ Turkish titles, and secondary destinations keeping their own header so no bar is
 Removed duplicate in-content page titles in the four tab screens (shell now owns title
 presentation). Gates: core 370/370, app 81/81, lint 0 errors/15 warnings, DEBUG APK.
 UX-03..UX-09 remain NOT STARTED. Xiaomi visual/edge-to-edge acceptance OPEN.
+
+UX-03 (2026-11-06, developer-approved): observation dashboard compaction — compact
+per-source status header built from real StatusPill states (no fabricated combined
+session), alert triggers behind a collapsed disclosure, control blocks untouched
+(single contextual Start/Stop already conditional). Behavioural contracts preserved;
+gates: core 370/370, app 81/81, lint 0/15, DEBUG APK. Xiaomi visual acceptance OPEN.
+UX-04..UX-09 not started.
