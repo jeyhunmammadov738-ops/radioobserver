@@ -820,3 +820,14 @@ historically unchanged and no host/JVM evidence level is upgraded by this note. 
 (Screen inventory, journeys, component catalog, design contract, state matrix) is COMPLETE
 as documentation only — see docs/uiux/*.md; UX-01 onward remain NOT STARTED and each
 requires separate authorization.
+
+UX-01 (2026-11-06, developer-approved, DEBUG-ONLY implementation): professional Material 3
+design-system foundation (docs/uiux/ux-01-design-system.md). Dark CONTROL DECK scheme from
+pure-Kotlin tokens (ControlDeckTokens), tuned typography with tabular numerals, restrained
+shape hierarchy, 4/8/12/16/24/32 spacing, shared Dimensions (48dp touch targets) and
+additive shared components (RadioSourceBadge, StatusBanner, StatisticRow/StatBlock,
+SectionHeader with description/trailing, ActionRow, WARNING/STALE pill kinds). Zero call
+sites rewritten, zero navigation/shell/screen-layout change, zero functional contract
+change. Gates: core 370/370, app 60/60 (11 new design-system tests), compile, assemble,
+lint 0 errors/15 warnings (baseline parity). Fields verified. UX-02 onward NOT started.
+

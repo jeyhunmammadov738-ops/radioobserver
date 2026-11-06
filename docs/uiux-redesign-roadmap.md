@@ -289,3 +289,10 @@ docs/
   `docs/uiux/screen-inventory.md`, `design-contract.md`, `component-catalog.md`,
   `screen-state-matrix.md`, `ux-00-acceptance.md`. Kaynak kodda değişiklik yok; Build Mode OFF.
   UX-01 ve sonrası BAŞLATILMADI.
+
+- **2026-11-06 — UX-01 TAMAMLANDI (kaynak, debug-only).** `ui/theme/DesignTokens.kt`,
+  `Theme.kt`, `DesignSystem.kt` (eklemeli), `DesignSystemShowcase.kt` ve 11 yeni host testi;
+  ayrıntı: `docs/uiux/ux-01-design-system.md`. Host kapıları: core 370/370, app 60/60,
+  lint 0 hata/15 uyarı. Ekran düzeni, gezinme, kabuk ve sistem çubuğu UX-02'ye bırakıldı;
+  UX-02 ve sonrası BAŞLATILMADI.
+
