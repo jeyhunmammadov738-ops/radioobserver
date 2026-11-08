@@ -311,3 +311,8 @@ docs/
 - **2026-11-06 — UX-03 TAMAMLANDI** (kompakt panel + katlanır tetikleyiciler) · **UX-04
   TAMAMLANDI** (kompakt gözlem araç çubuğu, STALE tonu): `docs/uiux/ux-03-dashboard.md`,
   `docs/uiux/ux-04-live-observations.md`. Xiaomi görsel kabulü AÇIK. UX-05+ BAŞLATILMADI.
+
+- **2026-11-08 — UX-05 KOD/HOST TAMAM.** Geçmiş listesi tek araç çubuğu yüzeyinde
+  toplandı; yıkıcı "Tümünü sil" düşük vurgulu hata rengi eyleme indirildi (onay
+  diyaloğu değişmedi). Kanıt: `docs/uiux/ux-05-history.md`. Xiaomi görsel kabulü AÇIK;
+  UX-06 ve sonrası BAŞLATILMADI.

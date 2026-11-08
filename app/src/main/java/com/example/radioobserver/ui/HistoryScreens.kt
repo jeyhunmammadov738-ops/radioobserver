@@ -110,25 +110,44 @@ fun HistoryScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary,
             )
-            HistoryFilterRow(filter, onFilterChange)
-            OutlinedButton(
-                onClick = onOpenReport,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-            ) { Text(stringResource(R.string.report_open)) }
-            // WORKSTREAM 05: functional entry to named analytical groups
-            // (user-created selections of SAVED records; opens nothing that scans).
-            OutlinedButton(
-                onClick = onOpenGroups,
-                modifier = Modifier.heightIn(min = 48.dp),
-            ) { Text(stringResource(R.string.group_entry_button)) }
-            // WORKSTREAM 04: favorites-only chip (no new navigation tab).
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                FilterChip(
-                    selected = favoritesOnly,
-                    onClick = { onFavoritesOnlyChange(!favoritesOnly) },
-                    label = { Text(stringResource(R.string.history_favorites_only)) },
-                    modifier = Modifier.heightIn(min = 48.dp),
-                )
+            // UX-05: ONE compact History toolbar — source filters, favorites-only and the
+            // two secondary entry points live in a single surface instead of four stacked
+            // full-width blocks. Every chip/button keeps its 48dp target and callback.
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = Spacing.md, vertical = Spacing.xs),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                ) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                        HistoryFilterChips(filter, onFilterChange)
+                        FilterChip(
+                            selected = favoritesOnly,
+                            onClick = { onFavoritesOnlyChange(!favoritesOnly) },
+                            label = { Text(stringResource(R.string.history_favorites_only)) },
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    ) {
+                        OutlinedButton(
+                            onClick = onOpenReport,
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                        ) { Text(stringResource(R.string.report_open)) }
+                        // WORKSTREAM 05: named analytical groups over SAVED records only.
+                        OutlinedButton(
+                            onClick = onOpenGroups,
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                        ) { Text(stringResource(R.string.group_entry_button)) }
+                    }
+                }
             }
             val visible = state.records.filter {
                 when (filter) {
@@ -158,12 +177,19 @@ fun HistoryScreen(
                 }
             }
             if (state.records.isNotEmpty()) {
-                OutlinedButton(
+                // UX-05: destructive action is visually separated and low-emphasis; the
+                // explicit confirm dialog (unchanged) still owns the actual deletion.
+                TextButton(
                     onClick = { clearAllConfirm = true },
                     modifier = Modifier
                         .heightIn(min = 48.dp)
                         .semantics { contentDescription = historyClearAllA11y },
-                ) { Text(stringResource(R.string.history_clear_all)) }
+                ) {
+                    Text(
+                        text = stringResource(R.string.history_clear_all),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             }
         }
     }
@@ -194,7 +220,7 @@ fun HistoryScreen(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun HistoryFilterRow(filter: HistoryFilter, onFilterChange: (HistoryFilter) -> Unit) {
+private fun HistoryFilterChips(filter: HistoryFilter, onFilterChange: (HistoryFilter) -> Unit) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         FilterChip(
             selected = filter == HistoryFilter.ALL,

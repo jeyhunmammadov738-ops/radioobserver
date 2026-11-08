@@ -863,3 +863,13 @@ source filters, advanced-filter button, favorites chip and label grouped into on
 toolbar surface; stale rows use the dedicated STALE pill tone. No behaviour, state,
 filter or preset change. Host gates: core 370/370, app 81/81, lint 0/15, DEBUG APK only.
 Xiaomi visual acceptance OPEN.
+
+UX-05 (2026-11-08, developer-approved): the saved-History experience is compacted into
+one toolbar surface (source filters + favourites chip in a single flow, report and groups
+entry points side by side) and the destructive "clear all" action is demoted to a
+low-emphasis error-coloured text action that still requires the unchanged confirmation
+dialog. Records, annotations, labels/notes, favourites, filters, retention and the
+confirm contract are untouched; no scan, permission or export is triggered from any
+History interaction. Evidence: docs/uiux/ux-05-history.md; core 370/370, app 81/81,
+lint 0 errors/15 warnings, debug APK only, versionCode unchanged. Xiaomi visual
+acceptance remains OPEN; UX-06 onward NOT STARTED.
