@@ -169,7 +169,7 @@ fun HistoryScreen(
                 visible.forEach { record ->
                     HistoryRecordRow(
                         record = record,
-                        isFavorite = state.annotations[record.id]?.favorite == true,
+                        annotation = state.annotations[record.id],
                         onToggleFavorite = { onToggleFavorite(record.id) },
                         onOpenDetail = { onOpenDetail(record.id) },
                         onDelete = { onDeleteOne(record.id) },
@@ -264,7 +264,7 @@ private fun HistoryNoticeCard(text: String, onDismiss: () -> Unit) {
 @Composable
 private fun HistoryRecordRow(
     record: HistoryRecord,
-    isFavorite: Boolean,
+    annotation: HistoryAnnotation?,
     onToggleFavorite: () -> Unit,
     onOpenDetail: () -> Unit,
     onDelete: () -> Unit,
@@ -303,11 +303,16 @@ private fun HistoryRecordRow(
                 verticalArrangement = Arrangement.spacedBy(Spacing.xs),
             ) {
                 Text(
-                    text = stringResource(
-                        R.string.history_row_line,
-                        radioLabel(record.radio),
-                        formatTime(record.savedAtEpochMs),
-                    ),
+                    text = buildString {
+                        append(stringResource(
+                            R.string.history_row_line,
+                            radioLabel(record.radio),
+                            formatTime(record.savedAtEpochMs)))
+                        annotation?.label?.let { append(" · "); append(it) }
+                        if (!annotation?.note.isNullOrBlank()) {
+                            append(" · "); append(stringResource(R.string.history_row_has_note))
+                        }
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     // Wraps (never clips) long meta at 320dp/2.0x; the buttons flow
@@ -330,7 +335,10 @@ private fun HistoryRecordRow(
                         .semantics { contentDescription = deleteA11y },
                     contentPadding = PaddingValues(horizontal = Spacing.md, vertical = Spacing.xs),
                 ) {
-                    Text(stringResource(R.string.history_delete_one))
+                    Text(
+                        text = stringResource(R.string.history_delete_one),
+                        color = MaterialTheme.colorScheme.error,
+                    )
                 }
                 // WORKSTREAM 04: record-bound favorite star (one specific History
                 // record; never a device identity; never starts an observation).
@@ -344,7 +352,7 @@ private fun HistoryRecordRow(
                 ) {
                     Text(
                         text = stringResource(
-                            if (isFavorite) R.string.live_favorite_star_on
+                            if (annotation?.favorite == true) R.string.live_favorite_star_on
                             else R.string.live_favorite_star_off),
                         style = MaterialTheme.typography.titleLarge,
                     )

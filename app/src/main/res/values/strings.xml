@@ -198,6 +198,7 @@
     <string name="ux_state_unavailable_title">Kullanılamıyor</string>
     <string name="ux_state_error_title">Sorun oluştu</string>
     <string name="ux_state_loading_title">Yükleniyor</string>
+    <string name="history_row_has_note">Not</string>
     <string name="groups_title">Analiz grupları</string>
     <string name="catalog_title">Sınıflandırma kataloğu</string>
     <string name="shell_back">Geri</string>

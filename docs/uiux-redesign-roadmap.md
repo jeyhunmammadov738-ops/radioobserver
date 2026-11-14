@@ -316,3 +316,7 @@ docs/
   toplandı; yıkıcı "Tümünü sil" düşük vurgulu hata rengi eyleme indirildi (onay
   diyaloğu değişmedi). Kanıt: `docs/uiux/ux-05-history.md`. Xiaomi görsel kabulü AÇIK;
   UX-06 ve sonrası BAŞLATILMADI.
+
+- **2026-11-08 — UX-05 TAMAMLAMA.** Satırlar açıklama nesnesinden etiket/not gösteriyor;
+  tek kayıt silme eylemi hata rengiyle ayrıldı (48dp korundu). Matris:
+  `docs/uiux/ux-05-history-completion.md`. Xiaomi görsel kabulü AÇIK; UX-06 BAŞLAMADI.

@@ -873,3 +873,13 @@ confirm contract are untouched; no scan, permission or export is triggered from 
 History interaction. Evidence: docs/uiux/ux-05-history.md; core 370/370, app 81/81,
 lint 0 errors/15 warnings, debug APK only, versionCode unchanged. Xiaomi visual
 acceptance remains OPEN; UX-06 onward NOT STARTED.
+
+UX-05 COMPLETION (2026-11-08): targeted gap closure. History rows now receive the record's
+annotation (single source of truth) and show the saved label and a "not" marker in the
+existing meta line only when they exist; the per-record delete action is error-coloured
+and separated from detail navigation while keeping its 48dp target and accessibility
+description. Toolbar, detail sections, favourites, editor, retention and the bulk-clear
+confirmation were verified in source and left unchanged. Evidence:
+docs/uiux/ux-05-history-completion.md (requirement matrix A-L). Gates: core 370/370,
+app 81/81, lint 0/15, debug APK only. Xiaomi visual acceptance remains OPEN; UX-06
+onward NOT STARTED.
