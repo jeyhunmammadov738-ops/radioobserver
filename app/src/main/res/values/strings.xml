@@ -333,6 +333,9 @@
     <string name="history_clear_all_confirm_body">Tüm kayıtlı gözlemler bu cihazdan kalıcı olarak silinir. Devam eden bir gözlem oturumu durmaz.</string>
     <string name="history_clear_all_confirm_yes">Evet, sil</string>
     <string name="history_cancel">Vazgeç</string>
+    <string name="history_unknown_name">Adsız kayıt</string>
+    <string name="history_delete_one_confirm_title">Bu kayıt silinsin mi?</string>
+    <string name="history_delete_one_confirm_body">“%1$s” kalıcı olarak silinecek. Bu işlem geri alınamaz; cihaz kimliği veya konum etkilenmez.</string>
     <string name="history_dropped_notice">Depodaki bozuk bazı kayıtlar okunamadı ve güvenli biçimde yok sayıldı. Diğer kayıtlar sağlamdır.</string>
     <string name="history_failed_closed_notice">Geçmiş dosyası okunamadığı için içerik gizlilik gereği tamamen boşaltıldı. Kayıt ayarlarınız güvenli varsayılanlara döndürüldü.</string>
     <string name="history_notice_dismiss">Anladım</string>

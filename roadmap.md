@@ -883,3 +883,10 @@ confirmation were verified in source and left unchanged. Evidence:
 docs/uiux/ux-05-history-completion.md (requirement matrix A-L). Gates: core 370/370,
 app 81/81, lint 0/15, debug APK only. Xiaomi visual acceptance remains OPEN; UX-06
 onward NOT STARTED.
+
+UX-05 DELETE CONFIRMATION CLOSURE (2026-11-21): individual History deletion previously ran
+straight from the row button; it now requires the shared destructive confirmation bound to the
+stable record id through a pure single-shot gate (no double invocation, cancel/dismiss/Back
+delete nothing, Clear All semantics untouched). Evidence: docs/uiux/ux-05-delete-confirmation.md;
+core 370/370, app 87/87, lint 0 errors/15 warnings, debug APK only. UX-05 Xiaomi visual
+acceptance stays OPEN; UX-06 not started.

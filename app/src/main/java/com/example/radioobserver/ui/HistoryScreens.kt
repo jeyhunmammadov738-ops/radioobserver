@@ -44,6 +44,8 @@ import com.example.radioobserver.core.radio.signal.SignalBucket
 import com.example.radioobserver.history.HistoryAgeFormat
 import com.example.radioobserver.history.HistoryController
 import com.example.radioobserver.ui.components.CompactInfoRow
+import com.example.radioobserver.ui.components.ConfirmActionDialog
+import com.example.radioobserver.ui.history.DeleteConfirmationGate
 import com.example.radioobserver.ui.components.EmptyState
 import com.example.radioobserver.ui.components.SectionHeader
 import com.example.radioobserver.ui.components.SourceIcon
@@ -90,6 +92,9 @@ fun HistoryScreen(
     onOpenGroups: () -> Unit = {},
 ) {
     var clearAllConfirm by remember { mutableStateOf(false) }
+    // UX-05: individual deletion needs an explicit confirmation bound to ONE record.
+    val deleteGate = remember { DeleteConfirmationGate() }
+    var pendingDeleteId by remember { mutableStateOf<String?>(null) }
     val historyClearAllA11y = stringResource(R.string.history_clear_all_a11y)
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -172,7 +177,10 @@ fun HistoryScreen(
                         annotation = state.annotations[record.id],
                         onToggleFavorite = { onToggleFavorite(record.id) },
                         onOpenDetail = { onOpenDetail(record.id) },
-                        onDelete = { onDeleteOne(record.id) },
+                        onDelete = {
+                            deleteGate.request(record.id)
+                            pendingDeleteId = record.id
+                        },
                     )
                 }
             }
@@ -192,6 +200,34 @@ fun HistoryScreen(
                 }
             }
         }
+    }
+
+    // UX-05: explicit confirmation for ONE saved record. Cancel, dismissal and Back all
+    // clear the pending identity without deleting; Confirm consumes the gate ONCE and
+    // forwards the SAME record id to the existing repository-backed callback.
+    pendingDeleteId?.let { id ->
+        val recordName = state.records.firstOrNull { it.id == id }
+            ?.displayName
+            ?: stringResource(R.string.history_unknown_name)
+        ConfirmActionDialog(
+            title = stringResource(R.string.history_delete_one_confirm_title),
+            explanation = stringResource(R.string.history_delete_one_confirm_body, recordName),
+            confirmLabel = stringResource(R.string.history_delete_one),
+            cancelLabel = stringResource(R.string.history_cancel),
+            onConfirm = {
+                pendingDeleteId = null
+                deleteGate.confirm()?.let(onDeleteOne)
+            },
+            onCancel = {
+                pendingDeleteId = null
+                deleteGate.cancel()
+            },
+            onDismissRequest = {
+                pendingDeleteId = null
+                deleteGate.cancel()
+            },
+            destructive = true,
+        )
     }
 
     if (clearAllConfirm) {

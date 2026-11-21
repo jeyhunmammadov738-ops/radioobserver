@@ -320,3 +320,7 @@ docs/
 - **2026-11-08 — UX-05 TAMAMLAMA.** Satırlar açıklama nesnesinden etiket/not gösteriyor;
   tek kayıt silme eylemi hata rengiyle ayrıldı (48dp korundu). Matris:
   `docs/uiux/ux-05-history-completion.md`. Xiaomi görsel kabulü AÇIK; UX-06 BAŞLAMADI.
+
+- **2026-11-21 — UX-05 silme onayı tamamlandı.** Tek kayıt silme artık paylaşılan yıkıcı onay
+  diyaloğundan geçiyor; kapı saf ve tek atımlık (çift çağrı yok, iptal/kapat/geri hiçbir şey
+  silmiyor). Kanıt: `docs/uiux/ux-05-delete-confirmation.md`. Xiaomi görsel kabulü AÇIK.
