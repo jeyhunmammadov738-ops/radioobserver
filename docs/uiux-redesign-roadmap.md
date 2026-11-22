@@ -324,3 +324,8 @@ docs/
 - **2026-11-21 — UX-05 silme onayı tamamlandı.** Tek kayıt silme artık paylaşılan yıkıcı onay
   diyaloğundan geçiyor; kapı saf ve tek atımlık (çift çağrı yok, iptal/kapat/geri hiçbir şey
   silmiyor). Kanıt: `docs/uiux/ux-05-delete-confirmation.md`. Xiaomi görsel kabulü AÇIK.
+
+- **2026-11-22 — UX-06 KOD/HOST TAMAM.** Analitik sunumu Control Deck'e taşındı (gerçek
+  sayısal bloklar, hizalı istatistik satırları, ray+dolgu dağılım çubukları, kova
+  üstünde tam sayılar, iki kartlı karşılaştırma). Kanıt: `docs/uiux/ux-06-analytics.md`.
+  Xiaomi görsel kabulü AÇIK; UX-07 ve sonrası BAŞLATILMADI.

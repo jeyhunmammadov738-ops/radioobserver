@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -44,6 +46,8 @@ import com.example.radioobserver.core.radio.history.GroupError
 import com.example.radioobserver.core.radio.history.HistoryRecord
 import com.example.radioobserver.core.radio.model.RadioType
 import com.example.radioobserver.history.SessionGroupController
+import com.example.radioobserver.ui.components.StatBlock
+import com.example.radioobserver.ui.components.StatisticRow
 import com.example.radioobserver.ui.components.EmptyState
 import com.example.radioobserver.ui.components.SectionHeader
 import com.example.radioobserver.ui.components.Spacing
@@ -452,9 +456,14 @@ private fun GroupStatsCard(stats: GroupStats) {
             modifier = Modifier.padding(Spacing.lg),
             verticalArrangement = Arrangement.spacedBy(Spacing.sm),
         ) {
-            StatLine(stringResource(R.string.group_stats_records), stats.recordCount.toString())
-            StatLine(stringResource(R.string.group_stats_ble), stats.bleCount.toString())
-            StatLine(stringResource(R.string.group_stats_wifi), stats.wifiCount.toString())
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
+            ) {
+                StatBlock(stats.recordCount.toString(), stringResource(R.string.group_stats_records))
+                StatBlock(stats.bleCount.toString(), stringResource(R.string.group_stats_ble))
+                StatBlock(stats.wifiCount.toString(), stringResource(R.string.group_stats_wifi))
+            }
             DistributionRows(stringResource(R.string.group_stats_source), stats.sourceDistribution)
             DistributionRows(stringResource(R.string.group_stats_signal), stats.signalDistribution)
             DistributionRows(stringResource(R.string.group_stats_freshness), stats.freshnessDistribution)
@@ -491,10 +500,7 @@ private fun GroupStatsCard(stats: GroupStats) {
 
 @Composable
 private fun StatLine(label: String, value: String) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-        Text(value, style = MaterialTheme.typography.bodyMedium)
-    }
+    StatisticRow(label = label, value = value)
 }
 
 /** Deterministic width bars: width fraction = count / max count (no animation). */
@@ -516,10 +522,18 @@ private fun DistributionRows(title: String, categories: List<CategoryCount>) {
                 )
                 androidx.compose.foundation.layout.Box(
                     modifier = Modifier
-                        .width(120.dp * (if (maxCount == 0) 0f else c.count.toFloat() / maxCount))
+                        .width(120.dp)
                         .height(8.dp)
-                        .background(MaterialTheme.colorScheme.primary),
-                )
+                        .clip(MaterialTheme.shapes.small)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                ) {
+                    androidx.compose.foundation.layout.Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(if (maxCount == 0) 0f else c.count.toFloat() / maxCount)
+                            .background(MaterialTheme.colorScheme.primary),
+                    )
+                }
             }
         }
     }
@@ -532,12 +546,21 @@ private fun TimeBucketBars(counts: List<Int>) {
     Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), verticalAlignment = Alignment.Bottom) {
         counts.forEach { count ->
             val heightDp = if (max == 0) 4.dp else (4 + (36 * count / max)).dp
-            androidx.compose.foundation.layout.Box(
-                modifier = Modifier
-                    .width(24.dp)
-                    .height(heightDp)
-                    .background(MaterialTheme.colorScheme.primary),
-            )
+            androidx.compose.foundation.layout.Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Bottom,
+            ) {
+                Text(
+                    text = count.toString(),
+                    style = MaterialTheme.typography.labelSmall,
+                )
+                androidx.compose.foundation.layout.Box(
+                    modifier = Modifier
+                        .width(24.dp)
+                        .height(heightDp)
+                        .background(MaterialTheme.colorScheme.primary),
+                )
+            }
         }
     }
 }

@@ -890,3 +890,11 @@ stable record id through a pure single-shot gate (no double invocation, cancel/d
 delete nothing, Clear All semantics untouched). Evidence: docs/uiux/ux-05-delete-confirmation.md;
 core 370/370, app 87/87, lint 0 errors/15 warnings, debug APK only. UX-05 Xiaomi visual
 acceptance stays OPEN; UX-06 not started.
+
+UX-06 (2026-11-22, developer-approved): analytics presentation redesigned on top of the
+unchanged WS05 engine - real numeric StatBlocks for records/Bluetooth/Wi-Fi, shared
+StatisticRow alignment, distribution bars with a visible track, exact counts above the
+six time buckets, and the two-group comparison kept as two honest stacked cards. No
+membership, storage, retention or statistics computation changed. Evidence:
+docs/uiux/ux-06-analytics.md; core 370/370, app 87/87, lint 0 errors/15 warnings, debug
+APK only. Xiaomi visual acceptance remains OPEN; UX-07 onward NOT STARTED.
