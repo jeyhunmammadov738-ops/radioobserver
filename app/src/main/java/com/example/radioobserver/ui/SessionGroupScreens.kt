@@ -1,6 +1,7 @@
 package com.example.radioobserver.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -18,6 +19,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -48,6 +50,7 @@ import com.example.radioobserver.core.radio.model.RadioType
 import com.example.radioobserver.history.SessionGroupController
 import com.example.radioobserver.ui.components.StatBlock
 import com.example.radioobserver.ui.components.StatisticRow
+import com.example.radioobserver.ui.analytics.ChartScale
 import com.example.radioobserver.ui.components.EmptyState
 import com.example.radioobserver.ui.components.SectionHeader
 import com.example.radioobserver.ui.components.Spacing
@@ -81,6 +84,7 @@ fun SessionGroupsScreen(
     var showCreate by remember { mutableStateOf(false) }
     var renameTarget by remember { mutableStateOf<String?>(null) }
     var deleteTarget by remember { mutableStateOf<String?>(null) }
+    val groupDeleteA11y = stringResource(R.string.group_delete_a11y)
 
     Surface(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -128,14 +132,19 @@ fun SessionGroupsScreen(
                     color = MaterialTheme.colorScheme.error,
                 )
             }
-            OutlinedButton(
-                onClick = { showCreate = true },
-                modifier = Modifier.heightIn(min = 48.dp),
-            ) { Text(stringResource(R.string.group_create_button)) }
-            OutlinedButton(
-                onClick = onOpenCompare,
-                modifier = Modifier.heightIn(min = 48.dp),
-            ) { Text(stringResource(R.string.group_compare)) }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                Button(
+                    onClick = { showCreate = true },
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                ) { Text(stringResource(R.string.group_create_button)) }
+                OutlinedButton(
+                    onClick = onOpenCompare,
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                ) { Text(stringResource(R.string.group_compare)) }
+            }
             if (state.groups.isEmpty()) {
                 EmptyState(stringResource(R.string.group_empty))
             } else {
@@ -149,7 +158,11 @@ fun SessionGroupsScreen(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                            ) {
                                 TextButton(
                                     onClick = { onOpenDetail(group.id) },
                                     modifier = Modifier.heightIn(min = 48.dp),
@@ -158,10 +171,19 @@ fun SessionGroupsScreen(
                                     onClick = { renameTarget = group.id },
                                     modifier = Modifier.heightIn(min = 48.dp),
                                 ) { Text(stringResource(R.string.group_rename)) }
+                                // Yıkıcı eylem görsel olarak ayrı ve hata renginde;
+                                // onay diyaloğu zorunlu kalmaya devam ediyor.
                                 TextButton(
                                     onClick = { deleteTarget = group.id },
-                                    modifier = Modifier.heightIn(min = 48.dp),
-                                ) { Text(stringResource(R.string.group_delete)) }
+                                    modifier = Modifier
+                                        .heightIn(min = 48.dp)
+                                        .semantics { contentDescription = groupDeleteA11y },
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.group_delete),
+                                        color = MaterialTheme.colorScheme.error,
+                                    )
+                                }
                             }
                         }
                     }
@@ -190,12 +212,23 @@ fun SessionGroupsScreen(
         AlertDialog(
             onDismissRequest = { deleteTarget = null },
             title = { Text(stringResource(R.string.group_delete_confirm_title)) },
-            text = { Text(stringResource(R.string.group_delete_confirm_body)) },
+            text = {
+                val name = state.groups.firstOrNull { it.id == target }?.name
+                Text(
+                    if (name.isNullOrBlank()) stringResource(R.string.group_delete_confirm_body)
+                    else stringResource(R.string.group_delete_confirm_body_named, name),
+                )
+            },
             confirmButton = {
                 TextButton(
                     onClick = { onDelete(target); deleteTarget = null },
                     modifier = Modifier.heightIn(min = 48.dp),
-                ) { Text(stringResource(R.string.group_delete_confirm_yes)) }
+                ) {
+                    Text(
+                        text = stringResource(R.string.group_delete_confirm_yes),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             },
             dismissButton = {
                 TextButton(
@@ -416,10 +449,30 @@ fun SessionGroupCompareScreen(
                 val right = groups.first { it.id == rightId }
                 val leftStats = SessionAnalytics.stats(left.recordIds.mapNotNull { id -> records.firstOrNull { it.id == id } })
                 val rightStats = SessionAnalytics.stats(right.recordIds.mapNotNull { id -> records.firstOrNull { it.id == id } })
-                Text(left.name, style = MaterialTheme.typography.titleMedium)
-                GroupStatsCard(leftStats)
-                Text(right.name, style = MaterialTheme.typography.titleMedium)
-                GroupStatsCard(rightStats)
+                // UX-06 responsive decision (no window-size-class dependency): at compact
+                // phone widths the two honest cards stay stacked for full-width charts; at
+                // >=600dp they sit side by side so the two groups can be read together.
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    if (maxWidth >= 600.dp) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(left.name, style = MaterialTheme.typography.titleMedium)
+                                GroupStatsCard(leftStats)
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(right.name, style = MaterialTheme.typography.titleMedium)
+                                GroupStatsCard(rightStats)
+                            }
+                        }
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                            Text(left.name, style = MaterialTheme.typography.titleMedium)
+                            GroupStatsCard(leftStats)
+                            Text(right.name, style = MaterialTheme.typography.titleMedium)
+                            GroupStatsCard(rightStats)
+                        }
+                    }
+                }
                 Text(
                     text = stringResource(R.string.group_stats_honesty),
                     style = MaterialTheme.typography.bodySmall,
@@ -530,7 +583,7 @@ private fun DistributionRows(title: String, categories: List<CategoryCount>) {
                     androidx.compose.foundation.layout.Box(
                         modifier = Modifier
                             .fillMaxHeight()
-                            .fillMaxWidth(if (maxCount == 0) 0f else c.count.toFloat() / maxCount)
+                            .fillMaxWidth(ChartScale.fraction(c.count, maxCount))
                             .background(MaterialTheme.colorScheme.primary),
                     )
                 }
@@ -545,7 +598,7 @@ private fun TimeBucketBars(counts: List<Int>) {
     val max = counts.maxOrNull() ?: 0
     Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), verticalAlignment = Alignment.Bottom) {
         counts.forEach { count ->
-            val heightDp = if (max == 0) 4.dp else (4 + (36 * count / max)).dp
+            val heightDp = (4 + (ChartScale.fraction(count, max) * 36f)).dp
             androidx.compose.foundation.layout.Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Bottom,

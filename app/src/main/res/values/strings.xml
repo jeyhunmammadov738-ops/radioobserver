@@ -125,6 +125,8 @@
     <string name="group_create_confirm">Oluştur</string>
     <string name="group_rename">Yeniden adlandır</string>
     <string name="group_delete">Grubu sil</string>
+    <string name="group_delete_a11y">Grubu ve üyelik listesini sil</string>
+    <string name="group_delete_confirm_body_named">“%1$s” grubu silinecek. Gruptaki kayıtlar Geçmiş\'te kalır; yalnız grup tanımı kaldırılır.</string>
     <string name="group_delete_confirm_title">Analiz grubu silinsin mi?</string>
     <string name="group_delete_confirm_body">Bu yalnızca grup meta verisini siler; Geçmiş kayıtları yerinde kalır.</string>
     <string name="group_delete_confirm_yes">Sil</string>

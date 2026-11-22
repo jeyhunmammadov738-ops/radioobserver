@@ -898,3 +898,14 @@ six time buckets, and the two-group comparison kept as two honest stacked cards.
 membership, storage, retention or statistics computation changed. Evidence:
 docs/uiux/ux-06-analytics.md; core 370/370, app 87/87, lint 0 errors/15 warnings, debug
 APK only. Xiaomi visual acceptance remains OPEN; UX-07 onward NOT STARTED.
+
+UX-06 targeted completion (2026-11-22, developer-approved): group management received the
+Control Deck presentation it lacked (single filled Create action beside secondary Compare,
+group cards with name + member summary, error-coloured and visually separated delete whose
+dialog now names the group and states that records stay in History). Charts now share one pure
+scale (ChartScale: zero stays exactly zero, largest count fills the track) while every numeric
+text still comes from the WS05 engine, whose percent denominator (group total) and half-up
+rounding are documented. Two-group comparison adds a >=600dp side-by-side layout via
+BoxWithConstraints; compact widths stay stacked. Evidence: docs/uiux/ux-06-analytics-experience.md.
+Core 370/370, app 95/95 (8 new), lint 0 errors/15 warnings, debug APK, versionCode unchanged.
+Xiaomi visual acceptance remains OPEN for UX-04, UX-05 and UX-06; UX-07 onward NOT STARTED.

@@ -329,3 +329,10 @@ docs/
   sayısal bloklar, hizalı istatistik satırları, ray+dolgu dağılım çubukları, kova
   üstünde tam sayılar, iki kartlı karşılaştırma). Kanıt: `docs/uiux/ux-06-analytics.md`.
   Xiaomi görsel kabulü AÇIK; UX-07 ve sonrası BAŞLATILMADI.
+
+- **2026-11-22 — UX-06 hedefli tamamlama (kod/host TAMAM).** Grup yönetimi sunumu Control
+  Deck'e hizalandı (tek birincil Oluştur, ikincil Karşılaştır, ad+üye özetli kartlar, hata
+  renginde ayrı silme ve grup adını içeren onay), grafikler tek saf ölçeğe bağlandı
+  (`ChartScale`), yüzde paydası ve yuvarlama belgelendi, >=600dp için yan yana karşılaştırma
+  eklendi. Kanıt: `docs/uiux/ux-06-analytics-experience.md`. Xiaomi görsel kabulü AÇIK;
+  UX-07 ve sonrası BAŞLATILMADI.
