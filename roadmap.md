@@ -920,3 +920,15 @@ and analytics read; opening the screen still starts no scan and writes no Histor
 docs/uiux/ux-07-reporting-export.md; core 370/370, app 102/102, lint 0 errors/15 warnings,
 debug APK only, versionCode unchanged. Xiaomi SAF/visual acceptance OPEN; UX-04, UX-05 and
 UX-06 acceptance remain OPEN; UX-08 NOT STARTED.
+
+UX-08 (2026-11-23, developer-approved): Settings is organized into four sections (Veri ve
+Geçmiş, Gizlilik, Sınıflandırma, Hakkında) with the classification catalog moved to its own
+section and given a truthful description; retention stays a single-choice 7/14/30 control
+with a note that it applies only to saved history; clear-all is labelled "Yıkıcı eylem" and
+rendered in the error colour with the unchanged confirmation; privacy copy is split into
+three progressive disclosures using the existing verbatim strings; the seven alert triggers
+are grouped as Kaynak / Sinyal kategorisi / Üretici bilgisi with per-group selection counts
+and remain OFF by default. Consents, retention contract, catalog limit, alert engine,
+FieldDiag access and version are unchanged. Evidence: docs/uiux/ux-08-settings-privacy.md;
+core 370/370, app 109/109 (7 new), lint 0 errors/15 warnings, debug APK only, versionCode
+unchanged. Xiaomi acceptance remains OPEN for UX-04 through UX-08; UX-09 NOT STARTED.

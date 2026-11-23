@@ -342,3 +342,8 @@ docs/
   "seçili / toplam" olarak dürüstçe yazılıyor, kaydet/iptal/hata durumları paylaşılan durum
   bandıyla görünür. Kanıt: `docs/uiux/ux-07-reporting-export.md`. SAF ve görsel kabul AÇIK;
   UX-08 BAŞLATILMADI.
+
+- **2026-11-23 — UX-08 KOD/HOST TAMAM.** Ayarlar dört bölüme ayrıldı, katalog kendi
+  bölümüne taşındı, saklama tek-seçim olarak açıklandı, yıkıcı eylem ayrıldı, gizlilik üç
+  aşamalı açılıma bölündü, yedi uyarı tetikleyicisi üç okunabilir grupta toplandı. Kanıt:
+  `docs/uiux/ux-08-settings-privacy.md`. Xiaomi görsel kabulü AÇIK; UX-09 BAŞLATILMADI.

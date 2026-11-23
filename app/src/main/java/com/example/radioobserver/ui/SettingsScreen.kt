@@ -67,6 +67,8 @@ fun SettingsScreen(
 ) {
     var clearAllConfirm by remember { mutableStateOf(false) }
     var privacyExpanded by remember { mutableStateOf(false) }
+    var privacyNotSavedExpanded by remember { mutableStateOf(false) }
+    var privacyLimitsExpanded by remember { mutableStateOf(false) }
     var consentExpanded by remember { mutableStateOf(false) }
     var wifiNamesExpanded by remember { mutableStateOf(false) }
     val historyToggleA11y = stringResource(R.string.history_recording_toggle_a11y)
@@ -126,14 +128,42 @@ fun SettingsScreen(
 
                 SectionHeader(stringResource(R.string.history_retention_label))
                 RetentionChips(state.consent.retentionDays, onRetentionChange)
+                Text(
+                    text = stringResource(R.string.settings_retention_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             if (state.records.isNotEmpty()) {
                 // Dangerous action, clearly separated, SAME confirmed controller path.
+                SectionHeader(stringResource(R.string.settings_destructive_label))
                 OutlinedButton(
                     onClick = { clearAllConfirm = true },
                     modifier = Modifier.heightIn(min = 48.dp),
-                ) { Text(stringResource(R.string.settings_clear_history_entry)) }
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_clear_history_entry),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        }
+
+        // ---- Sınıflandırma: catalog entry with a truthful description ----
+        SettingsGroup(R.string.settings_catalog_section) {
+            Text(
+                text = stringResource(R.string.settings_catalog_short),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OutlinedButton(
+                onClick = onOpenSignatureCatalog,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp),
+            ) {
+                Text(stringResource(R.string.signature_catalog_open))
             }
         }
 
@@ -144,16 +174,32 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Text(
+                text = stringResource(R.string.settings_privacy_what_saved),
+                style = MaterialTheme.typography.titleSmall,
+            )
             ExpandableText(
                 expanded = privacyExpanded,
                 onToggle = { privacyExpanded = !privacyExpanded },
-                bodyRes = listOf(
-                    R.string.scope_note,
-                    R.string.privacy_body,
-                    R.string.background_stop_note,
-                    R.string.wifi_passive_note,
-                    R.string.ble_bounded_note,
-                ),
+                bodyRes = listOf(R.string.scope_note, R.string.privacy_body),
+            )
+            Text(
+                text = stringResource(R.string.settings_privacy_what_not),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            ExpandableText(
+                expanded = privacyNotSavedExpanded,
+                onToggle = { privacyNotSavedExpanded = !privacyNotSavedExpanded },
+                bodyRes = listOf(R.string.wifi_passive_note, R.string.ble_bounded_note),
+            )
+            Text(
+                text = stringResource(R.string.settings_privacy_limits),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            ExpandableText(
+                expanded = privacyLimitsExpanded,
+                onToggle = { privacyLimitsExpanded = !privacyLimitsExpanded },
+                bodyRes = listOf(R.string.background_stop_note),
             )
         }
 
@@ -162,16 +208,6 @@ fun SettingsScreen(
             // The version label itself is the tappable target: SEVEN intentional
             // taps unlock the developer section (no visible hint — deliberate
             // developer-only control; nothing is persisted).
-            // WORKSTREAM 03B: user classification-catalog management entry
-            // (Ayarlar owns it; NO fifth bottom tab). Pure navigation.
-            OutlinedButton(
-                onClick = onOpenSignatureCatalog,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 48.dp),
-            ) {
-                Text(stringResource(R.string.signature_catalog_open))
-            }
             TextButton(
                 onClick = onVersionTap,
                 modifier = Modifier

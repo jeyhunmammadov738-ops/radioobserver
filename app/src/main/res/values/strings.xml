@@ -33,9 +33,9 @@
 
     <!-- Ayarlar (single source of truth for history + privacy preferences) -->
     <string name="settings_title">Ayarlar</string>
-    <string name="settings_history_section">Geçmiş kaydı</string>
-    <string name="settings_privacy_section">Gizlilik ve çalışma şekli</string>
-    <string name="settings_about_section">Uygulama hakkında</string>
+    <string name="settings_history_section">Veri ve Geçmiş</string>
+    <string name="settings_privacy_section">Gizlilik</string>
+    <string name="settings_about_section">Hakkında</string>
     <string name="settings_clear_history_entry">Kayıtlı geçmişin tamamını sil</string>
     <string name="app_version_format">Sürüm %1$s</string>
     <string name="app_version_a11y">Sürüm etiketi</string>
@@ -212,6 +212,9 @@
     <string name="alerts_enable_a11y">Oturum uyarılarını etkinleştir veya devre dışı bırak</string>
     <string name="alerts_explanation">Uyarılar yalnızca uygulama ön plandayken ve gözlem oturumu etkin olduğunda çalışır.</string>
     <string name="alerts_privacy_note">Uyarılar cihaz kimliği içermez; oturum bitince silinir ve hiçbir yerde saklanmaz.</string>
+    <string name="alerts_group_source">Kaynak</string>
+    <string name="alerts_group_signal">Sinyal kategorisi</string>
+    <string name="alerts_group_manufacturer">Üretici bilgisi</string>
     <string name="alerts_triggers_toggle_format">Tetikleyiciler: seçili %1$d</string>
     <string name="alerts_no_session">Etkin oturum yok; uyarılar bekletilir.</string>
     <string name="alerts_empty">Henüz uyarı yok.</string>
@@ -308,6 +311,13 @@
     <string name="settings_summary_recording_off">Kapalı — gözlemler yalnızca canlı oturumda gösterilir</string>
     <string name="settings_summary_wifi_names_on">Açık — yalnızca görünen ağ adı kaydedilir</string>
     <string name="settings_summary_wifi_names_off">Kapalı — Wi-Fi gözlemleri adsız kaydedilir</string>
+    <string name="settings_catalog_section">Sınıflandırma</string>
+    <string name="settings_catalog_short">Cihaz türü ve üretici eşlemesini kendi etiketlerinizle genişletin. Kayıtların kendisi değişmez; en fazla 30 giriş.</string>
+    <string name="settings_retention_note">Saklama süresi yalnızca kaydedilmiş geçmişe uygulanır; açık oturum belleğini etkilemez.</string>
+    <string name="settings_destructive_label">Yıkıcı eylem</string>
+    <string name="settings_privacy_what_saved">Ne kaydedilir</string>
+    <string name="settings_privacy_what_not">Ne kaydedilmez</string>
+    <string name="settings_privacy_limits">Arka plan ve sınırlar</string>
     <string name="settings_privacy_short">Gözlemler varsayılan olarak bellekte tutulur; oturumda silinir. Geçmişe yalnızca siz açarsanız kaydedilir.</string>
 
     <!-- Grouped live-observation detail sections -->

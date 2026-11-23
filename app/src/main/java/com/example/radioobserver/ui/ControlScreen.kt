@@ -48,6 +48,8 @@ import com.example.radioobserver.core.radio.ui.SessionIssueKey
 import com.example.radioobserver.ui.components.DashboardSummary
 import com.example.radioobserver.ui.components.PillStyle
 import com.example.radioobserver.core.radio.alerts.AlertTrigger
+import com.example.radioobserver.ui.alerts.AlertTriggerGroup
+import com.example.radioobserver.ui.alerts.AlertTriggerGroups
 import com.example.radioobserver.core.radio.alerts.SessionAlert
 import com.example.radioobserver.ui.components.SectionHeader
 import com.example.radioobserver.ui.components.SourceIcon
@@ -541,14 +543,23 @@ private fun SessionAlertsPanel(
                     )
                 }
                 if (triggersOpen) {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                        AlertTrigger.entries.forEach { trigger ->
-                            FilterChip(
-                                selected = trigger in alerts.triggers,
-                                onClick = { onAlertTriggerToggled(trigger) },
-                                label = { Text(alertTriggerLabel(trigger)) },
-                                modifier = Modifier.heightIn(min = 48.dp),
-                            )
+                    // UX-08: the same seven triggers, grouped so the selection is readable
+                    // and each group reports its own selected count.
+                    AlertTriggerGroups.groups().forEach { group ->
+                        Text(
+                            text = alertGroupLabel(group),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                            AlertTriggerGroups.triggers(group).forEach { trigger ->
+                                FilterChip(
+                                    selected = trigger in alerts.triggers,
+                                    onClick = { onAlertTriggerToggled(trigger) },
+                                    label = { Text(alertTriggerLabel(trigger)) },
+                                    modifier = Modifier.heightIn(min = 48.dp),
+                                )
+                            }
                         }
                     }
                 }
@@ -596,6 +607,15 @@ private fun SessionAlertsPanel(
         }
     }
 }
+
+@Composable
+private fun alertGroupLabel(group: AlertTriggerGroup): String = stringResource(
+    when (group) {
+        AlertTriggerGroup.SOURCE -> R.string.alerts_group_source
+        AlertTriggerGroup.SIGNAL -> R.string.alerts_group_signal
+        AlertTriggerGroup.MANUFACTURER -> R.string.alerts_group_manufacturer
+    },
+)
 
 @Composable
 private fun alertTriggerLabel(trigger: AlertTrigger): String = when (trigger) {
