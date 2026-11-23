@@ -2,6 +2,7 @@ package com.example.radioobserver.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -144,15 +145,18 @@ fun ObservationsFeedScreen(
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.padding(horizontal = Spacing.lg)) {
-                Text(
-                    text = if (state.rows.isNotEmpty()) {
-                        val count = ControlScreenProjection.observationCount(state.rows)
-                        pluralStringResource(R.plurals.observation_count, count, count)
-                    } else stringResource(R.string.feed_empty_no_session),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(vertical = Spacing.xs),
-                )
+                // UX-09 P1-03: the header only reports a COUNT. The honest empty
+                // explanation is rendered exactly once, by the state block below, so the
+                // same sentence can no longer appear above AND below the controls.
+                if (state.rows.isNotEmpty()) {
+                    val count = ControlScreenProjection.observationCount(state.rows)
+                    Text(
+                        text = pluralStringResource(R.plurals.observation_count, count, count),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = Spacing.xs),
+                    )
+                }
                 // WORKSTREAM 04: honest session-local favorites disclosure.
                 if (favoritesOnly) {
                     Text(
@@ -176,9 +180,10 @@ fun ObservationsFeedScreen(
                     )
                 }
             }
-            // WORKSTREAM 01 view switcher: Liste / Radar / Zaman tüneli. Same
-            // UX-04: compact toolbar surface groups view modes and source filters so the
-            // feed header does not stack full-width blocks. 48dp targets preserved.
+            // UX-09 P1: the control area is rebuilt as THREE clearly labelled groups
+            // inside one surface. No fixed heights, no shared row: every group owns its
+            // own FlowRow so wrapped labels can never be drawn over a neighbouring
+            // control, and the hierarchy (source -> view -> filters) is explicit.
             Surface(
                 color = MaterialTheme.colorScheme.surfaceContainerLow,
                 shape = MaterialTheme.shapes.medium,
@@ -186,82 +191,107 @@ fun ObservationsFeedScreen(
                     .fillMaxWidth()
                     .padding(horizontal = Spacing.lg),
             ) {
-            Column(modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.xs)) {
-                Text(
-                    text = stringResource(R.string.view_label),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Column(
                     modifier = Modifier
-                        .padding(top = Spacing.xs)
-                        .semantics { heading() },
-                )
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                    FilterChip(
-                        selected = viewKind == LiveViewKind.LIST,
-                        onClick = { onViewKindChange(LiveViewKind.LIST) },
-                        label = { Text(stringResource(R.string.view_list)) },
-                        modifier = Modifier.heightIn(min = 48.dp),
-                    )
-                    FilterChip(
-                        selected = viewKind == LiveViewKind.RADAR,
-                        onClick = { onViewKindChange(LiveViewKind.RADAR) },
-                        label = { Text(stringResource(R.string.view_radar)) },
-                        modifier = Modifier.heightIn(min = 48.dp),
-                    )
-                    FilterChip(
-                        selected = viewKind == LiveViewKind.TIMELINE,
-                        onClick = { onViewKindChange(LiveViewKind.TIMELINE) },
-                        label = { Text(stringResource(R.string.view_timeline)) },
-                        modifier = Modifier.heightIn(min = 48.dp),
-                    )
-                }
-            }
-            // Filter chips: FlowRow wraps at large font scales; 48dp targets; the
-            // list below has its own top padding so chips never overlap rows.
-            FlowRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = Spacing.xs),
-                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-            ) {
-                FilterChip(
-                    selected = filter == FeedFilter.ALL,
-                    onClick = { onFilterChange(FeedFilter.ALL) },
-                    label = { Text(stringResource(R.string.filter_all)) },
-                    modifier = Modifier.heightIn(min = 48.dp),
-                )
-                FilterChip(
-                    selected = filter == FeedFilter.BLUETOOTH,
-                    onClick = { onFilterChange(FeedFilter.BLUETOOTH) },
-                    label = { Text(stringResource(R.string.filter_bluetooth)) },
-                    modifier = Modifier.heightIn(min = 48.dp),
-                )
-                FilterChip(
-                    selected = filter == FeedFilter.WIFI,
-                    onClick = { onFilterChange(FeedFilter.WIFI) },
-                    label = { Text(stringResource(R.string.filter_wifi)) },
-                    modifier = Modifier.heightIn(min = 48.dp),
-                )
-                // WORKSTREAM 02: advanced filter control with an applied-criteria
-                // badge. PURE UI state: expanding it dispatches nothing.
-                OutlinedButton(
-                    onClick = { filterPanelOpen = !filterPanelOpen },
-                    modifier = Modifier.heightIn(min = 48.dp),
+                        .fillMaxWidth()
+                        .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.xs),
                 ) {
-                    val active = LiveFilter.activeCriteriaCount(criteria, searchQuery)
                     Text(
-                        if (active > 0) stringResource(R.string.filters_active_badge_format, active)
-                        else stringResource(R.string.filters_button),
+                        text = stringResource(R.string.feed_group_source),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.semantics { heading() },
                     )
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                    ) {
+                        FilterChip(
+                            selected = filter == FeedFilter.ALL,
+                            onClick = { onFilterChange(FeedFilter.ALL) },
+                            label = { Text(stringResource(R.string.filter_all), maxLines = 2) },
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        )
+                        FilterChip(
+                            selected = filter == FeedFilter.BLUETOOTH,
+                            onClick = { onFilterChange(FeedFilter.BLUETOOTH) },
+                            label = { Text(stringResource(R.string.filter_bluetooth), maxLines = 2) },
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        )
+                        FilterChip(
+                            selected = filter == FeedFilter.WIFI,
+                            onClick = { onFilterChange(FeedFilter.WIFI) },
+                            label = { Text(stringResource(R.string.filter_wifi), maxLines = 2) },
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        )
+                    }
+
+                    Text(
+                        text = stringResource(R.string.view_label),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.semantics { heading() },
+                    )
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                    ) {
+                        FilterChip(
+                            selected = viewKind == LiveViewKind.LIST,
+                            onClick = { onViewKindChange(LiveViewKind.LIST) },
+                            label = { Text(stringResource(R.string.view_list), maxLines = 2) },
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        )
+                        FilterChip(
+                            selected = viewKind == LiveViewKind.RADAR,
+                            onClick = { onViewKindChange(LiveViewKind.RADAR) },
+                            label = { Text(stringResource(R.string.view_radar), maxLines = 2) },
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        )
+                        FilterChip(
+                            selected = viewKind == LiveViewKind.TIMELINE,
+                            onClick = { onViewKindChange(LiveViewKind.TIMELINE) },
+                            label = { Text(stringResource(R.string.view_timeline), maxLines = 2) },
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        )
+                    }
+
+                    Text(
+                        text = stringResource(R.string.feed_group_filters),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.semantics { heading() },
+                    )
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                    ) {
+                        OutlinedButton(
+                            onClick = { filterPanelOpen = !filterPanelOpen },
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        ) {
+                            val active = LiveFilter.activeCriteriaCount(criteria, searchQuery)
+                            Text(
+                                text = if (active > 0) {
+                                    stringResource(R.string.filters_active_badge_format, active)
+                                } else {
+                                    stringResource(R.string.filters_button)
+                                },
+                                maxLines = 2,
+                            )
+                        }
+                        FilterChip(
+                            selected = favoritesOnly,
+                            onClick = { onFavoritesOnlyChange(!favoritesOnly) },
+                            label = { Text(stringResource(R.string.live_favorites_only), maxLines = 2) },
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        )
+                    }
                 }
-                // WORKSTREAM 04: session-local favorites-only view (Liste only).
-                FilterChip(
-                    selected = favoritesOnly,
-                    onClick = { onFavoritesOnlyChange(!favoritesOnly) },
-                    label = { Text(stringResource(R.string.live_favorites_only)) },
-                    modifier = Modifier.heightIn(min = 48.dp),
-                )
-            }
             }
             if (filterPanelOpen) {
                 FilterPanel(
@@ -286,6 +316,14 @@ fun ObservationsFeedScreen(
                 state.rows.isNotEmpty() -> FeedEmptyKind.NO_MATCHES_FOR_FILTER
                 else -> ObservationFeedProjection.emptyKind(state, filter)
             }
+            // UX-09 P1: the content area is BOUNDED to the space the controls leave
+            // over. Previously it asked for fillMaxSize inside the same Column, so a
+            // view could claim the full screen height and draw over the control area.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+            ) {
             when (emptyKind) {
                 null -> when (viewKind) {
                     LiveViewKind.LIST -> LazyColumn(
@@ -329,6 +367,7 @@ fun ObservationsFeedScreen(
                     else if (advancedActive) stringResource(R.string.filter_no_matches)
                     else stringResource(R.string.feed_empty_filter),
                 )
+            }
             }
         }
     }

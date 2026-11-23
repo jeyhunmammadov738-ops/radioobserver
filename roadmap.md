@@ -944,3 +944,13 @@ Xiaomi handoff). Gates: core 370/370, app 109/109, compileDebugKotlin, assembleD
 lint 0 errors/15 warnings, debug APK, versionCode unchanged. UX-09 is code/host complete,
 but the OVERALL UI/UX ROADMAP REMAINS NOT ACCEPTED until the developer reports Xiaomi
 sign-off for UX-04 through UX-09.
+
+UX-09 P1 VISUAL FIX (2026-11-23): the developer's Xiaomi screenshot exposed four defects on
+Gozlemler. The control area is rebuilt as three labelled groups (Kaynak / Gorunum /
+Suzgecler) each owning its own FlowRow, every chip label is capped at two lines, the content
+area is bounded with weight(1f) so no view can paint over the controls, and the header no
+longer repeats the empty-state sentence that the state block renders. All callbacks,
+semantics, empty taxonomy, radar/timeline projections and 48dp targets are unchanged; the
+bottom navigation was not touched. Evidence: docs/uiux/ux-09-observations-p1-fix.md. Gates:
+core 370/370, app 109/109, lint 0 errors/15 warnings, debug APK. Xiaomi re-verification of
+the Observations screen remains OPEN; overall roadmap still NOT ACCEPTED.

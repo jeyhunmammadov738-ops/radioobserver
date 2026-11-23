@@ -352,3 +352,8 @@ docs/
   (radar işaretçisi 48dp dokunma hedefi, katalog silme onayında yıkıcı vurgu, kalıcı 30
   giriş sayacı); ekran ve durum denetimi ile Xiaomi el kiti `docs/uiux/ux-09-final-qa.md`
   içinde. Genel UI/UX roadmap'i, geliştirici Xiaomi imzası bildirilene kadar KABUL EDİLMEDİ.
+
+- **2026-11-23 — UX-09 P1 görsel düzeltme (Gözlemler).** Kontrol alanı üç etiketli gruba
+  ayrıldı, çip etiketleri iki satırla sınırlandı, içerik alanı `weight(1f)` ile sınırlandı,
+  yinelenen boş durum metni kaldırıldı. Kanıt: `docs/uiux/ux-09-observations-p1-fix.md`.
+  Xiaomi yeniden doğrulaması AÇIK.

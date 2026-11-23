@@ -49,6 +49,8 @@
     <string name="diag_hint">Bu bölüm yalnızca hata ayıklama sürümünde görünür. Tanılama verileri bellekte tutulur; diske yazılmaz, yüklenmez ve geçmişe karışmaz.</string>
 
     <!-- Workstream 01 (2026-10-23): canli gorunumler (Liste / Radar / Zaman tuneli) -->
+    <string name="feed_group_source">Kaynak</string>
+    <string name="feed_group_filters">Süzgeçler</string>
     <string name="view_label">Görünüm</string>
     <string name="view_list">Liste</string>
     <string name="view_radar">Radar</string>
