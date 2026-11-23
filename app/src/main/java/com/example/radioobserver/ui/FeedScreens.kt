@@ -772,12 +772,13 @@ private fun RadarView(
                         else androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
                     val color = if (dot.radio == RadioType.BLE) bleColor else wifiColor
                     val hollow = dot.freshness == FreshnessState.STALE
-                    // 32dp touch target around a 16dp symbol: dots are tappable and
-                    // announced; the list below remains the always-available path.
+                    // UX-09: 48dp minimum touch target around the 16dp symbol (the
+                    // previous 32dp box was below the accessibility minimum); the offset
+                    // is halved so the symbol stays centred on its true position.
                     Box(
                         modifier = Modifier
-                            .offset(x - 16.dp, y - 16.dp)
-                            .size(32.dp)
+                            .offset(x - 24.dp, y - 24.dp)
+                            .size(48.dp)
                             .clickable(onClick = { onRowSelect(dot.rowId) })
                             .semantics { contentDescription = markerA11y },
                         contentAlignment = Alignment.Center,

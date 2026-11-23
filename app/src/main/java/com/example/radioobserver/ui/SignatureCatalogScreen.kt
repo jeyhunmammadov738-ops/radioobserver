@@ -89,6 +89,12 @@ fun SignatureCatalogScreen(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        // UX-09: the bounded capacity is visible up front, not only after a failed add.
+        Text(
+            text = stringResource(R.string.signature_catalog_count_format, userRules.size, 30),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         Text(
             text = identityCaution,
             style = MaterialTheme.typography.bodySmall,
@@ -217,7 +223,10 @@ fun SignatureCatalogScreen(
             },
             confirmButton = {
                 TextButton(onClick = { onDeleteRule(rule.id); deleteCandidate = null }) {
-                    Text(stringResource(R.string.signature_catalog_delete))
+                    Text(
+                        text = stringResource(R.string.signature_catalog_delete),
+                        color = MaterialTheme.colorScheme.error,
+                    )
                 }
             },
             dismissButton = {

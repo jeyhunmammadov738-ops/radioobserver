@@ -932,3 +932,15 @@ and remain OFF by default. Consents, retention contract, catalog limit, alert en
 FieldDiag access and version are unchanged. Evidence: docs/uiux/ux-08-settings-privacy.md;
 core 370/370, app 109/109 (7 new), lint 0 errors/15 warnings, debug APK only, versionCode
 unchanged. Xiaomi acceptance remains OPEN for UX-04 through UX-08; UX-09 NOT STARTED.
+
+UX-09 (2026-11-23, developer-approved): final integrated QA. Three genuine defects closed:
+the schematic-radar marker touch target grew from 32dp to the 48dp accessibility minimum,
+the classification-catalog delete confirmation now carries the error colour, and the
+catalog shows a persistent "Kendi girinleriniz: N / 30" capacity counter instead of
+revealing the limit only after a failed add. All screens and their honest states were
+audited against the approved contract; responsive, IME, contrast and 2.0x-text checks
+remain DEVICE PENDING. Evidence: docs/uiux/ux-09-final-qa.md (defect table, screen audit,
+Xiaomi handoff). Gates: core 370/370, app 109/109, compileDebugKotlin, assembleDebug,
+lint 0 errors/15 warnings, debug APK, versionCode unchanged. UX-09 is code/host complete,
+but the OVERALL UI/UX ROADMAP REMAINS NOT ACCEPTED until the developer reports Xiaomi
+sign-off for UX-04 through UX-09.

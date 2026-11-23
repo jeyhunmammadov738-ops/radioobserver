@@ -252,6 +252,7 @@
     <string name="signature_catalog_delete_confirm_title">Kuralı sil?</string>
     <string name="signature_catalog_delete_confirm_text">"%1$s" kalıcı olarak silinecek. Bu işlem geri alınamaz.</string>
     <string name="signature_catalog_empty">Henüz kullanıcı kuralı yok. Bunlar yalnızca kategorik, doğrulanmamış ipuçlardır.</string>
+    <string name="signature_catalog_count_format">Kendi girişleriniz: %1$d / %2$d</string>
     <string name="signature_catalog_limit_reached">Kural sınırına ulaşıldı (en fazla %1$d).</string>
     <string name="signature_catalog_invalid_title">Başlık boş olamaz ve en fazla 40 karakter olabilir.</string>
     <string name="signature_catalog_dialog_title_create">Yeni kural oluştur</string>

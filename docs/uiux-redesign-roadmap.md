@@ -347,3 +347,8 @@ docs/
   bölümüne taşındı, saklama tek-seçim olarak açıklandı, yıkıcı eylem ayrıldı, gizlilik üç
   aşamalı açılıma bölündü, yedi uyarı tetikleyicisi üç okunabilir grupta toplandı. Kanıt:
   `docs/uiux/ux-08-settings-privacy.md`. Xiaomi görsel kabulü AÇIK; UX-09 BAŞLATILMADI.
+
+- **2026-11-23 — UX-09 KOD/HOST QA TAMAM; ROADMAP KABULÜ AÇIK.** Üç gerçek kusur kapatıldı
+  (radar işaretçisi 48dp dokunma hedefi, katalog silme onayında yıkıcı vurgu, kalıcı 30
+  giriş sayacı); ekran ve durum denetimi ile Xiaomi el kiti `docs/uiux/ux-09-final-qa.md`
+  içinde. Genel UI/UX roadmap'i, geliştirici Xiaomi imzası bildirilene kadar KABUL EDİLMEDİ.
