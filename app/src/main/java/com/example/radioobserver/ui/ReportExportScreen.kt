@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -43,6 +44,10 @@ import com.example.radioobserver.core.radio.export.ReportBuilder
 import com.example.radioobserver.core.radio.history.AnalyticalGroup
 import com.example.radioobserver.core.radio.history.HistoryAnnotation
 import com.example.radioobserver.core.radio.history.HistoryRecord
+import com.example.radioobserver.ui.report.ExportReview
+import com.example.radioobserver.ui.report.ExportReviewer
+import com.example.radioobserver.ui.components.StatusBanner
+import com.example.radioobserver.ui.components.PillKind
 import com.example.radioobserver.ui.components.SectionHeader
 import com.example.radioobserver.ui.components.Spacing
 import kotlinx.coroutines.Dispatchers
@@ -159,6 +164,16 @@ fun ReportExportScreen(
         ReportScope.ALL -> records.size
     }
 
+    // UX-07: one honest review of what is about to be exported (presentation only).
+    val review = ExportReviewer.review(
+        selectedCount = currentCount,
+        totalCount = records.size,
+        includeNames = includeNames,
+        includeAnnotations = includeAnnotations,
+        scopeResolved = !(selectedScope == ReportScope.COMPARE &&
+            (leftId == null || rightId == null || leftId == rightId)),
+    )
+
     Surface(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -185,7 +200,7 @@ fun ReportExportScreen(
                 ) { Text(stringResource(R.string.feed_back)) }
             }
 
-            SectionHeader(stringResource(R.string.report_scope_section))
+            SectionHeader(stringResource(R.string.report_step_scope))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 FilterChip(
                     selected = selectedScope == ReportScope.GROUP,
@@ -250,12 +265,13 @@ fun ReportExportScreen(
             }
 
             Text(
-                text = stringResource(R.string.report_count, currentCount),
+                text = stringResource(
+                    R.string.report_count_of_total, review.selectedCount, review.totalCount),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary,
             )
 
-            SectionHeader(stringResource(R.string.report_format_section))
+            SectionHeader(stringResource(R.string.report_step_format))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 FilterChip(
                     selected = format == ExportFormat.CSV,
@@ -269,7 +285,7 @@ fun ReportExportScreen(
                 )
             }
 
-            SectionHeader(stringResource(R.string.report_fields_section))
+            SectionHeader(stringResource(R.string.report_step_fields))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -295,6 +311,20 @@ fun ReportExportScreen(
                     onCheckedChange = { includeAnnotations = it },
                 )
             }
+            val reviewKey = review.summaryKey
+            StatusBanner(
+                title = stringResource(
+                    when (reviewKey) {
+                        ExportReview.SummaryKey.INCLUDES_SENSITIVE ->
+                            R.string.report_privacy_included
+                        ExportReview.SummaryKey.NO_RECORDS -> R.string.report_privacy_excluded
+                        else -> R.string.report_privacy_excluded
+                    }
+                ),
+                kind = if (review.includesSensitive) PillKind.ATTENTION else PillKind.NEUTRAL,
+                detail = stringResource(R.string.report_names_note),
+            )
+
             Text(
                 text = stringResource(R.string.report_names_note),
                 style = MaterialTheme.typography.bodySmall,
@@ -335,7 +365,8 @@ fun ReportExportScreen(
                 )
             }
 
-            OutlinedButton(
+            SectionHeader(stringResource(R.string.report_step_save))
+            Button(
                 onClick = {
                     status = null
                     error = null
@@ -389,12 +420,10 @@ fun ReportExportScreen(
             ) { Text(stringResource(R.string.report_save)) }
 
             status?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary)
+                StatusBanner(title = it, kind = PillKind.ACTIVE)
             }
             error?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error)
+                StatusBanner(title = it, kind = PillKind.ERROR)
             }
         }
     }

@@ -336,3 +336,9 @@ docs/
   (`ChartScale`), yüzde paydası ve yuvarlama belgelendi, >=600dp için yan yana karşılaştırma
   eklendi. Kanıt: `docs/uiux/ux-06-analytics-experience.md`. Xiaomi görsel kabulü AÇIK;
   UX-07 ve sonrası BAŞLATILMADI.
+
+- **2026-11-23 — UX-07 KOD/HOST TAMAM.** Rapor/dışa aktarma ekranı dört adımlı akışa
+  dönüştü; gizli alanların varsayılan olarak hariç olduğu açıkça gösteriliyor, kayıt sayısı
+  "seçili / toplam" olarak dürüstçe yazılıyor, kaydet/iptal/hata durumları paylaşılan durum
+  bandıyla görünür. Kanıt: `docs/uiux/ux-07-reporting-export.md`. SAF ve görsel kabul AÇIK;
+  UX-08 BAŞLATILMADI.

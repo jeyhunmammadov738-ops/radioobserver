@@ -909,3 +909,14 @@ rounding are documented. Two-group comparison adds a >=600dp side-by-side layout
 BoxWithConstraints; compact widths stay stacked. Evidence: docs/uiux/ux-06-analytics-experience.md.
 Core 370/370, app 95/95 (8 new), lint 0 errors/15 warnings, debug APK, versionCode unchanged.
 Xiaomi visual acceptance remains OPEN for UX-04, UX-05 and UX-06; UX-07 onward NOT STARTED.
+
+UX-07 (2026-11-23, developer-approved): the WS06 reporting screen is now a four-step
+Control Deck flow (scope, format, sensitive fields, save) with a single filled primary Save
+action, an explicit "SSID, etiket ve notlar DAHİL DEĞİL" banner that turns into an attention
+warning once a sensitive opt-in is enabled, an honest "Seçili kayıt: N / M" count, and
+success/error/cancellation feedback rendered through the shared status banner. A pure
+ExportReview model keeps the displayed numbers derived from the same saved records History
+and analytics read; opening the screen still starts no scan and writes no History. Evidence:
+docs/uiux/ux-07-reporting-export.md; core 370/370, app 102/102, lint 0 errors/15 warnings,
+debug APK only, versionCode unchanged. Xiaomi SAF/visual acceptance OPEN; UX-04, UX-05 and
+UX-06 acceptance remain OPEN; UX-08 NOT STARTED.
